@@ -1,8 +1,10 @@
 #[derive(Debug, PartialEq, Eq)]
-pub enum Token {
+pub enum TokenKind {
     Character(u8),
     Number(usize),
 }
+
+pub type Token = (usize, TokenKind);
 
 pub fn tokenize(mml: &str) -> Result<Vec<Token>, String> {
     let is_ascii = mml.chars().all(|x| x <= '\u{7f}');
@@ -33,9 +35,9 @@ pub fn tokenize(mml: &str) -> Result<Vec<Token>, String> {
                 bytes.next();
             }
 
-            tokens.push(Token::Number(number));
+            tokens.push((i + 1, TokenKind::Number(number)));
         } else if byte != b' ' {
-            tokens.push(Token::Character(byte));
+            tokens.push((i + 1, TokenKind::Character(byte)));
         }
     }
     Ok(tokens)
