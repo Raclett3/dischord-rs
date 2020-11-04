@@ -1,4 +1,4 @@
-mod tokenize;
+pub mod tokenize;
 
 pub fn hello() {
     println!("Hello, world");
