@@ -4,6 +4,22 @@ pub enum TokenKind {
     Number(usize),
 }
 
+impl TokenKind {
+    pub fn is_character(&self) -> bool {
+        match self {
+            TokenKind::Character(_) => true,
+            TokenKind::Number(_) => false,
+        }
+    }
+
+    pub fn is_number(&self) -> bool {
+        match self {
+            TokenKind::Number(_) => true,
+            TokenKind::Character(_) => false,
+        }
+    }
+}
+
 pub type Token = (usize, TokenKind);
 
 pub fn tokenize(mml: &str) -> Result<Vec<Token>, String> {

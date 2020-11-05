@@ -8,6 +8,14 @@ pub fn hello() {
 mod test {
     use super::*;
     #[test]
+    fn token_test() {
+        use tokenize::TokenKind;
+
+        assert!(TokenKind::Character(b'c').is_character());
+        assert!(TokenKind::Number(42).is_number());
+    }
+
+    #[test]
     fn tokenize_test() {
         use tokenize::*;
         use TokenKind::*;
