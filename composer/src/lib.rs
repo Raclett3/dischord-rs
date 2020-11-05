@@ -118,4 +118,23 @@ mod test {
         let mut stream = RollbackableTokenStream::new(&tokens);
         assert_eq!(octave(&mut stream), None);
     }
+
+    #[test]
+    fn test_tempo() {
+        use parse::tempo::tempo;
+        use parse::{Instruction::Tempo, RollbackableTokenStream};
+        use tokenize::tokenize;
+
+        let tokens = tokenize("T120").unwrap();
+        let mut stream = RollbackableTokenStream::new(&tokens);
+        assert_eq!(tempo(&mut stream), Some(Ok(Tempo(120))));
+
+        let tokens = tokenize("TA").unwrap();
+        let mut stream = RollbackableTokenStream::new(&tokens);
+        assert!(tempo(&mut stream).unwrap().is_err());
+
+        let tokens = tokenize("T").unwrap();
+        let mut stream = RollbackableTokenStream::new(&tokens);
+        assert!(tempo(&mut stream).unwrap().is_err());
+    }
 }

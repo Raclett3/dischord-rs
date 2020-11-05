@@ -1,5 +1,6 @@
 pub mod note;
 pub mod octave;
+pub mod tempo;
 
 use crate::tokenize::Token;
 
@@ -15,6 +16,7 @@ pub enum Instruction {
     Note(isize, Vec<NoteLength>),
     Rest(Vec<NoteLength>),
     Octave(isize),
+    Tempo(usize),
 }
 
 pub type ParsedMML = Vec<Instruction>;
