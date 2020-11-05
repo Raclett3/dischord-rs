@@ -99,4 +99,23 @@ mod test {
         let mut stream = RollbackableTokenStream::new(&tokens);
         assert_eq!(rest(&mut stream), None);
     }
+
+    #[test]
+    fn test_octave() {
+        use parse::octave::octave;
+        use parse::{Instruction::Octave, RollbackableTokenStream};
+        use tokenize::tokenize;
+
+        let tokens = tokenize("<").unwrap();
+        let mut stream = RollbackableTokenStream::new(&tokens);
+        assert_eq!(octave(&mut stream), Some(Ok(Octave(1))));
+
+        let tokens = tokenize(">").unwrap();
+        let mut stream = RollbackableTokenStream::new(&tokens);
+        assert_eq!(octave(&mut stream), Some(Ok(Octave(-1))));
+
+        let tokens = tokenize("!").unwrap();
+        let mut stream = RollbackableTokenStream::new(&tokens);
+        assert_eq!(octave(&mut stream), None);
+    }
 }
