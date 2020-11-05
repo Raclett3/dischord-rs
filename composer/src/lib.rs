@@ -34,5 +34,10 @@ mod test {
             (13, Character(b'g')),
             (14, Number(4)),
         ]));
+        assert_eq!(tokenize("C e\n\rG"), Ok(vec![
+            (1, Character(b'c')),
+            (3, Character(b'e')),
+            (6, Character(b'g')),
+        ]));
     }
 }
