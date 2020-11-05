@@ -20,6 +20,17 @@ impl TokenKind {
     }
 }
 
+use std::fmt;
+
+impl fmt::Display for TokenKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TokenKind::Character(x) => write!(f, "{}", x),
+            TokenKind::Number(x) => write!(f, "{}", x),
+        }
+    }
+}
+
 pub type Token = (usize, TokenKind);
 
 pub fn tokenize(mml: &str) -> Result<Vec<Token>, String> {
