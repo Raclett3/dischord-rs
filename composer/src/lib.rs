@@ -1,3 +1,4 @@
+pub mod parse;
 pub mod tokenize;
 
 pub fn hello() {
@@ -39,5 +40,60 @@ mod test {
             (3, Character(b'e')),
             (6, Character(b'g')),
         ]));
+    }
+
+    #[test]
+    fn test_length() {
+        use parse::note::length;
+        use parse::{NoteLength::*, RollbackableTokenStream};
+        use tokenize::tokenize;
+
+        let tokens = tokenize("123..&45&A13.&2").unwrap();
+        let mut stream = RollbackableTokenStream::new(&tokens);
+        assert_eq!(
+            length(&mut stream),
+            vec![Length(123), Dot, Dot, Length(45), DefaultLength]
+        );
+
+        let tokens = tokenize("C").unwrap();
+        let mut stream = RollbackableTokenStream::new(&tokens);
+        assert_eq!(length(&mut stream), vec![DefaultLength]);
+    }
+
+    #[test]
+    fn test_note() {
+        use parse::note::note;
+        use parse::{Instruction::Note, NoteLength::*, RollbackableTokenStream};
+        use tokenize::tokenize;
+
+        let tokens = tokenize("C2.C4").unwrap();
+        let mut stream = RollbackableTokenStream::new(&tokens);
+        assert_eq!(
+            note(&mut stream),
+            Some(Ok(Note(3, vec![Length(2), Dot])))
+        );
+
+        let tokens = tokenize("E++C").unwrap();
+        let mut stream = RollbackableTokenStream::new(&tokens);
+        assert_eq!(note(&mut stream), Some(Ok(Note(9, vec![DefaultLength]))));
+
+        let tokens = tokenize("H").unwrap();
+        let mut stream = RollbackableTokenStream::new(&tokens);
+        assert_eq!(note(&mut stream), None);
+    }
+
+    #[test]
+    fn test_rest() {
+        use parse::note::rest;
+        use parse::{Instruction::Rest, NoteLength::*, RollbackableTokenStream};
+        use tokenize::tokenize;
+
+        let tokens = tokenize("R4.R8").unwrap();
+        let mut stream = RollbackableTokenStream::new(&tokens);
+        assert_eq!(rest(&mut stream), Some(Ok(Rest(vec![Length(4), Dot]))));
+
+        let tokens = tokenize("C4").unwrap();
+        let mut stream = RollbackableTokenStream::new(&tokens);
+        assert_eq!(rest(&mut stream), None);
     }
 }
