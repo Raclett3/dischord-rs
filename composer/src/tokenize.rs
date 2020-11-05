@@ -43,7 +43,7 @@ pub fn tokenize(mml: &str) -> Result<Vec<Token>, String> {
     let mut tokens = Vec::new();
 
     while let Some((i, byte)) = bytes.next() {
-        if b'0' <= byte && byte <= b'9' {
+        let token = if b'0' <= byte && byte <= b'9' {
             let mut number = (byte - b'0') as usize;
 
             while let Some(&(_, peeked)) = bytes.peek() {
@@ -62,10 +62,16 @@ pub fn tokenize(mml: &str) -> Result<Vec<Token>, String> {
                 bytes.next();
             }
 
-            tokens.push((i + 1, TokenKind::Number(number)));
+            TokenKind::Number(number)
+        } else if b'A' <= byte && byte <= b'Z' {
+            TokenKind::Character(byte - b'A' + b'a')
         } else if byte != b' ' {
-            tokens.push((i + 1, TokenKind::Character(byte)));
-        }
+            TokenKind::Character(byte)
+        } else {
+            continue;
+        };
+
+        tokens.push((i + 1, token));
     }
     Ok(tokens)
 }

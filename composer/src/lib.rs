@@ -21,7 +21,7 @@ mod test {
         use TokenKind::*;
         assert!(tokenize("Do some 焼き松茸").is_err());
         assert!(tokenize("9999999999999999999999999999999999999999999999999").is_err());
-        assert_eq!(tokenize("c256e16g4<ceg4"), Ok(vec![
+        assert_eq!(tokenize("c256e16g4<CEG4"), Ok(vec![
             (1, Character(b'c')),
             (2, Number(256)),
             (5, Character(b'e')),
