@@ -1,5 +1,5 @@
-use crate::tokenize::TokenKind;
 use crate::parse::{Instruction, NoteLength, ParseResult, RollbackableTokenStream};
+use crate::tokenize::TokenKind;
 
 pub fn length(stream: &mut RollbackableTokenStream) -> Vec<NoteLength> {
     let mut length = vec![];
