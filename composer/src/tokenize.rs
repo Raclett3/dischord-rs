@@ -65,10 +65,10 @@ pub fn tokenize(mml: &str) -> Result<Vec<Token>, String> {
             TokenKind::Number(number)
         } else if b'A' <= byte && byte <= b'Z' {
             TokenKind::Character(byte - b'A' + b'a')
-        } else if byte != b' ' {
-            TokenKind::Character(byte)
-        } else {
+        } else if byte == b' ' || byte == b'\n' || byte == b'\r' {
             continue;
+        } else {
+            TokenKind::Character(byte)
         };
 
         tokens.push((i + 1, token));
