@@ -1,6 +1,7 @@
 pub mod note;
 pub mod octave;
 pub mod tempo;
+pub mod tone;
 pub mod volume;
 
 use crate::tokenize::{Token, TokenKind};
@@ -19,6 +20,7 @@ pub enum Instruction {
     Octave(isize),
     Tempo(usize),
     Volume(f64),
+    Tone(usize),
     Length(Vec<NoteLength>),
 }
 
@@ -77,6 +79,19 @@ impl<'a> RollbackableTokenStream<'a> {
             }
             _ => None,
         }
+    }
+
+    pub fn comma_separated_numbers(&mut self) -> Vec<usize> {
+        let mut numbers = vec![];
+
+        while let Some(number) = self.take_number() {
+            numbers.push(number);
+            if !self.expect_character(b',') {
+                break;
+            }
+        }
+
+        numbers
     }
 
     pub fn expect_character(&mut self, ch_a: u8) -> bool {
