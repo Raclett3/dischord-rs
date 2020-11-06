@@ -134,4 +134,15 @@ mod test {
         assert!(single_parse(tempo, "T").unwrap().is_err());
         assert!(single_parse(tempo, "A").is_none());
     }
+
+    #[test]
+    fn test_volume() {
+        use parse::volume::volume;
+        use parse::Instruction::Volume;
+
+        assert_eq!(single_parse(volume, "V120"), Some(Ok(Volume(120))));
+        assert!(single_parse(volume, "VB").unwrap().is_err());
+        assert!(single_parse(volume, "V").unwrap().is_err());
+        assert!(single_parse(volume, "C").is_none());
+    }
 }
