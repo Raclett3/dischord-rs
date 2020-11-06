@@ -21,6 +21,7 @@ pub enum Instruction {
     Tempo(usize),
     Volume(f64),
     Tone(usize),
+    Detune(usize, f64),
     Length(Vec<NoteLength>),
 }
 

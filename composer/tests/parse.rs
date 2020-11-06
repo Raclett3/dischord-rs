@@ -113,9 +113,12 @@ fn test_volume() {
 #[test]
 fn test_tone() {
     use parse::tone::tone;
-    use parse::Instruction::Tone;
+    use parse::Instruction::{Detune, Tone};
 
     assert_eq!(single_parse(tone, "@2"), Some(Ok(Tone(2))));
+    assert_eq!(single_parse(tone, "@D2,100"), Some(Ok(Detune(2, 1.0))));
+    assert!(single_parse(tone, "@D3").unwrap().is_err());
+    assert!(single_parse(tone, "@D1,10,100").unwrap().is_err());
     assert!(single_parse(tone, "@M").unwrap().is_err());
     assert!(single_parse(tone, "@").unwrap().is_err());
     assert!(single_parse(tone, "0").is_none());
