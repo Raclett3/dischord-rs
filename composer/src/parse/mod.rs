@@ -2,7 +2,7 @@ pub mod note;
 pub mod octave;
 pub mod tempo;
 
-use crate::tokenize::Token;
+use crate::tokenize::{Token, TokenKind};
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum NoteLength {
@@ -54,6 +54,33 @@ impl<'a> RollbackableTokenStream<'a> {
 
     pub fn empty(&self) -> bool {
         self.cursor >= self.tokens.len()
+    }
+
+    pub fn take_number(&mut self) -> Option<usize> {
+        match self.peek() {
+            Some((_, TokenKind::Number(num))) => {
+                self.next();
+                Some(num)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn take_character(&mut self) -> Option<u8> {
+        match self.peek() {
+            Some((_, TokenKind::Character(ch))) => {
+                self.next();
+                Some(ch)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn expect_character(&mut self, ch_a: u8) -> bool {
+        match self.next() {
+            Some((_, TokenKind::Character(ch_b))) => ch_a == ch_b,
+            _ => false,
+        }
     }
 
     pub fn new(tokens: &'a [Token]) -> Self {
