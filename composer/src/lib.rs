@@ -48,93 +48,73 @@ mod test {
         );
     }
 
+    fn single_parse<T>(parser: fn(&mut parse::RollbackableTokenStream) -> T, mml: &str) -> T {
+        use parse::RollbackableTokenStream;
+        use tokenize::tokenize;
+
+        let tokens = tokenize(mml).unwrap();
+        let mut stream = RollbackableTokenStream::new(&tokens);
+        parser(&mut stream)
+    }
+
     #[test]
     fn test_length() {
         use parse::note::length;
-        use parse::{NoteLength::*, RollbackableTokenStream};
-        use tokenize::tokenize;
+        use parse::NoteLength::*;
 
-        let tokens = tokenize("123..&45&A13.&2").unwrap();
-        let mut stream = RollbackableTokenStream::new(&tokens);
         assert_eq!(
-            length(&mut stream),
+            single_parse(length, "123..&45&A13.&2"),
             vec![Length(123), Dot, Dot, Length(45), DefaultLength]
         );
-
-        let tokens = tokenize("C").unwrap();
-        let mut stream = RollbackableTokenStream::new(&tokens);
-        assert_eq!(length(&mut stream), vec![DefaultLength]);
+        assert_eq!(single_parse(length, "C"), vec![DefaultLength]);
     }
 
     #[test]
     fn test_note() {
         use parse::note::note;
-        use parse::{Instruction::Note, NoteLength::*, RollbackableTokenStream};
-        use tokenize::tokenize;
+        use parse::{Instruction::Note, NoteLength::*};
 
-        let tokens = tokenize("C2.C4").unwrap();
-        let mut stream = RollbackableTokenStream::new(&tokens);
-        assert_eq!(note(&mut stream), Some(Ok(Note(3, vec![Length(2), Dot]))));
-
-        let tokens = tokenize("E++C").unwrap();
-        let mut stream = RollbackableTokenStream::new(&tokens);
-        assert_eq!(note(&mut stream), Some(Ok(Note(9, vec![DefaultLength]))));
-
-        let tokens = tokenize("H").unwrap();
-        let mut stream = RollbackableTokenStream::new(&tokens);
-        assert_eq!(note(&mut stream), None);
+        assert_eq!(
+            single_parse(note, "C2.C4"),
+            Some(Ok(Note(3, vec![Length(2), Dot])))
+        );
+        assert_eq!(
+            single_parse(note, "E++C"),
+            Some(Ok(Note(9, vec![DefaultLength])))
+        );
+        assert_eq!(single_parse(note, "H"), None);
     }
 
     #[test]
     fn test_rest() {
         use parse::note::rest;
-        use parse::{Instruction::Rest, NoteLength::*, RollbackableTokenStream};
-        use tokenize::tokenize;
+        use parse::{Instruction::Rest, NoteLength::*};
 
-        let tokens = tokenize("R4.R8").unwrap();
-        let mut stream = RollbackableTokenStream::new(&tokens);
-        assert_eq!(rest(&mut stream), Some(Ok(Rest(vec![Length(4), Dot]))));
-
-        let tokens = tokenize("C4").unwrap();
-        let mut stream = RollbackableTokenStream::new(&tokens);
-        assert_eq!(rest(&mut stream), None);
+        assert_eq!(
+            single_parse(rest, "R4.R8"),
+            Some(Ok(Rest(vec![Length(4), Dot])))
+        );
+        assert_eq!(single_parse(rest, "C4"), None);
     }
 
     #[test]
     fn test_octave() {
         use parse::octave::octave;
-        use parse::{Instruction::Octave, RollbackableTokenStream};
-        use tokenize::tokenize;
+        use parse::Instruction::Octave;
 
-        let tokens = tokenize("<").unwrap();
-        let mut stream = RollbackableTokenStream::new(&tokens);
-        assert_eq!(octave(&mut stream), Some(Ok(Octave(1))));
-
-        let tokens = tokenize(">").unwrap();
-        let mut stream = RollbackableTokenStream::new(&tokens);
-        assert_eq!(octave(&mut stream), Some(Ok(Octave(-1))));
-
-        let tokens = tokenize("!").unwrap();
-        let mut stream = RollbackableTokenStream::new(&tokens);
-        assert_eq!(octave(&mut stream), None);
+        assert_eq!(single_parse(octave, "<"), Some(Ok(Octave(1))));
+        assert_eq!(single_parse(octave, ">"), Some(Ok(Octave(-1))));
+        assert_eq!(single_parse(octave, "!"), None);
     }
 
     #[test]
     fn test_tempo() {
         use parse::tempo::tempo;
-        use parse::{Instruction::Tempo, RollbackableTokenStream};
-        use tokenize::tokenize;
+        use parse::Instruction::Tempo;
 
-        let tokens = tokenize("T120").unwrap();
-        let mut stream = RollbackableTokenStream::new(&tokens);
-        assert_eq!(tempo(&mut stream), Some(Ok(Tempo(120))));
-
-        let tokens = tokenize("TA").unwrap();
-        let mut stream = RollbackableTokenStream::new(&tokens);
-        assert!(tempo(&mut stream).unwrap().is_err());
-
-        let tokens = tokenize("T").unwrap();
-        let mut stream = RollbackableTokenStream::new(&tokens);
-        assert!(tempo(&mut stream).unwrap().is_err());
+        assert_eq!(single_parse(tempo, "T120"), Some(Ok(Tempo(120))));
+        assert!(single_parse(tempo, "TA").unwrap().is_err());
+        assert!(single_parse(tempo, "T").unwrap().is_err());
+        assert!(single_parse(tempo, "A").is_none());
     }
 }
