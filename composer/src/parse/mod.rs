@@ -99,8 +99,11 @@ impl<'a> RollbackableTokenStream<'a> {
     }
 
     pub fn expect_character(&mut self, ch_a: char) -> bool {
-        match self.next() {
-            Some((_, TokenKind::Character(ch_b))) => ch_a == ch_b,
+        match self.peek() {
+            Some((_, TokenKind::Character(ch_b))) => {
+                self.next();
+                ch_a == ch_b
+            },
             _ => false,
         }
     }
@@ -118,8 +121,7 @@ pub fn parse(tokens: &[Token]) -> Result<ParsedMML, String> {
     let mut track = Vec::new();
 
     while !stream.empty() {
-        if let Some((_, TokenKind::Character(';'))) = stream.peek() {
-            stream.next();
+        if stream.expect_character(';') {
             stream.accept();
             parsed.push(track);
             track = Vec::new();
