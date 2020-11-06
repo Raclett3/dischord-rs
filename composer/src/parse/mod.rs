@@ -19,6 +19,7 @@ pub enum Instruction {
     Octave(isize),
     Tempo(usize),
     Volume(usize),
+    Length(Vec<NoteLength>),
 }
 
 pub type ParsedMML = Vec<Instruction>;

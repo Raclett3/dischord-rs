@@ -35,6 +35,16 @@ pub fn rest(stream: &mut RollbackableTokenStream) -> ParseResult {
     Some(Ok(Instruction::Rest(length)))
 }
 
+pub fn length(stream: &mut RollbackableTokenStream) -> ParseResult {
+    if !stream.expect_character(b'l') {
+        return None;
+    }
+
+    let length = parse_length(stream);
+
+    Some(Ok(Instruction::Rest(length)))
+}
+
 pub fn note(stream: &mut RollbackableTokenStream) -> ParseResult {
     let character = stream.take_character()?;
     let mut pitch = match character {

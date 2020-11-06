@@ -50,17 +50,17 @@ mod test {
 
     #[test]
     fn test_parse() {
-        use parse::{parse, Instruction::*, NoteLength::*};
+        use parse::{parse, Instruction, NoteLength::*};
         use tokenize::tokenize;
         assert_eq!(
             parse(&tokenize("T150ab8r4&8..<c4").unwrap()).unwrap(),
             vec![
-                Tempo(150),
-                Note(12, vec![DefaultLength]),
-                Note(14, vec![Length(8)]),
-                Rest(vec![Length(4), Length(8), Dot, Dot]),
-                Octave(1),
-                Note(3, vec![Length(4)])
+                Instruction::Tempo(150),
+                Instruction::Note(12, vec![DefaultLength]),
+                Instruction::Note(14, vec![Length(8)]),
+                Instruction::Rest(vec![Length(4), Length(8), Dot, Dot]),
+                Instruction::Octave(1),
+                Instruction::Note(3, vec![Length(4)])
             ]
         );
     }
@@ -112,6 +112,18 @@ mod test {
             Some(Ok(Rest(vec![Length(4), Dot])))
         );
         assert_eq!(single_parse(rest, "C4"), None);
+    }
+
+    #[test]
+    fn test_length() {
+        use parse::note::length;
+        use parse::{Instruction::Rest, NoteLength::*};
+
+        assert_eq!(
+            single_parse(length, "L8..L9"),
+            Some(Ok(Rest(vec![Length(8), Dot, Dot])))
+        );
+        assert_eq!(single_parse(length, "DEF"), None);
     }
 
     #[test]
