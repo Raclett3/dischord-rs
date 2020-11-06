@@ -75,15 +75,15 @@ mod test {
     }
 
     #[test]
-    fn test_length() {
-        use parse::note::length;
+    fn test_parse_length() {
+        use parse::note::parse_length;
         use parse::NoteLength::*;
 
         assert_eq!(
-            single_parse(length, "123..&45&A13.&2"),
+            single_parse(parse_length, "123..&45&A13.&2"),
             vec![Length(123), Dot, Dot, Length(45), DefaultLength]
         );
-        assert_eq!(single_parse(length, "C"), vec![DefaultLength]);
+        assert_eq!(single_parse(parse_length, "C"), vec![DefaultLength]);
     }
 
     #[test]

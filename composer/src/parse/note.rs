@@ -1,7 +1,7 @@
 use crate::parse::{Instruction, NoteLength, ParseResult, RollbackableTokenStream};
 use crate::tokenize::TokenKind;
 
-pub fn length(stream: &mut RollbackableTokenStream) -> Vec<NoteLength> {
+pub fn parse_length(stream: &mut RollbackableTokenStream) -> Vec<NoteLength> {
     let mut length = vec![];
     loop {
         if let Some((_, TokenKind::Number(num))) = stream.peek() {
@@ -30,7 +30,7 @@ pub fn rest(stream: &mut RollbackableTokenStream) -> ParseResult {
         return None;
     }
 
-    let length = length(stream);
+    let length = parse_length(stream);
 
     Some(Ok(Instruction::Rest(length)))
 }
@@ -58,7 +58,7 @@ pub fn note(stream: &mut RollbackableTokenStream) -> ParseResult {
         stream.next();
     }
 
-    let length = length(stream);
+    let length = parse_length(stream);
 
     Some(Ok(Instruction::Note(pitch, length)))
 }
