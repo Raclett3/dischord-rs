@@ -8,7 +8,7 @@ pub fn volume(stream: &mut RollbackableTokenStream) -> ParseResult {
 
     let tempo = stream.next();
     match tempo {
-        Some((_, TokenKind::Number(num))) => Some(Ok(Instruction::Volume(num))),
+        Some((_, TokenKind::Number(num))) => Some(Ok(Instruction::Volume(num as f64 / 100.0))),
         Some((token_at, token)) => Some(Err(format!("Unexpected token {} at {}", token_at, token))),
         _ => Some(Err("Unexpected EOF after the token V".to_string())),
     }

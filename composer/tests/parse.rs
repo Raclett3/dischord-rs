@@ -104,7 +104,7 @@ fn test_volume() {
     use parse::volume::volume;
     use parse::Instruction::Volume;
 
-    assert_eq!(single_parse(volume, "V120"), Some(Ok(Volume(120))));
+    assert_eq!(single_parse(volume, "V200"), Some(Ok(Volume(2.0))));
     assert!(single_parse(volume, "VB").unwrap().is_err());
     assert!(single_parse(volume, "V").unwrap().is_err());
     assert!(single_parse(volume, "C").is_none());

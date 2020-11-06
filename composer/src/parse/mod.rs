@@ -12,13 +12,13 @@ pub enum NoteLength {
     Length(usize),
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(PartialEq, Debug)]
 pub enum Instruction {
     Note(isize, Vec<NoteLength>),
     Rest(Vec<NoteLength>),
     Octave(isize),
     Tempo(usize),
-    Volume(usize),
+    Volume(f64),
     Length(Vec<NoteLength>),
 }
 
