@@ -11,12 +11,12 @@ pub fn parse_length(stream: &mut RollbackableTokenStream) -> Vec<NoteLength> {
             length.push(NoteLength::DefaultLength);
         }
 
-        while let Some((_, TokenKind::Character(b'.'))) = stream.peek() {
+        while let Some((_, TokenKind::Character('.'))) = stream.peek() {
             stream.next();
             length.push(NoteLength::Dot)
         }
 
-        if let Some((_, TokenKind::Character(b'&'))) = stream.peek() {
+        if let Some((_, TokenKind::Character('&'))) = stream.peek() {
             stream.next();
         } else {
             break;
@@ -26,7 +26,7 @@ pub fn parse_length(stream: &mut RollbackableTokenStream) -> Vec<NoteLength> {
 }
 
 pub fn rest(stream: &mut RollbackableTokenStream) -> ParseResult {
-    if !stream.expect_character(b'r') {
+    if !stream.expect_character('r') {
         return None;
     }
 
@@ -36,7 +36,7 @@ pub fn rest(stream: &mut RollbackableTokenStream) -> ParseResult {
 }
 
 pub fn length(stream: &mut RollbackableTokenStream) -> ParseResult {
-    if !stream.expect_character(b'l') {
+    if !stream.expect_character('l') {
         return None;
     }
 
@@ -45,21 +45,21 @@ pub fn length(stream: &mut RollbackableTokenStream) -> ParseResult {
     Some(Ok(Instruction::Rest(length)))
 }
 
-fn character_to_pitch(character: u8) -> Option<isize> {
+fn character_to_pitch(character: char) -> Option<isize> {
     match character {
-        b'c' => Some(3),
-        b'd' => Some(5),
-        b'e' => Some(7),
-        b'f' => Some(8),
-        b'g' => Some(10),
-        b'a' => Some(12),
-        b'b' => Some(14),
+        'c' => Some(3),
+        'd' => Some(5),
+        'e' => Some(7),
+        'f' => Some(8),
+        'g' => Some(10),
+        'a' => Some(12),
+        'b' => Some(14),
         _ => None,
     }
 }
 
 pub fn chord(stream: &mut RollbackableTokenStream) -> ParseResult {
-    if !stream.expect_character(b'(') {
+    if !stream.expect_character('(') {
         return None;
     }
 
@@ -68,9 +68,9 @@ pub fn chord(stream: &mut RollbackableTokenStream) -> ParseResult {
 
     loop {
         match stream.take_character() {
-            Some(b')') => break,
-            Some(b'<') => octave += 1,
-            Some(b'>') => octave -= 1,
+            Some(')') => break,
+            Some('<') => octave += 1,
+            Some('>') => octave -= 1,
             None => return Some(Err("Unexpected EOF after (".to_string())),
             Some(x) => {
                 if let Some(pitch) = character_to_pitch(x) {
@@ -93,8 +93,8 @@ pub fn note(stream: &mut RollbackableTokenStream) -> ParseResult {
 
     loop {
         match stream.peek() {
-            Some((_, TokenKind::Character(b'+'))) => pitch += 1,
-            Some((_, TokenKind::Character(b'-'))) => pitch -= 1,
+            Some((_, TokenKind::Character('+'))) => pitch += 1,
+            Some((_, TokenKind::Character('-'))) => pitch -= 1,
             _ => break,
         }
 

@@ -2,7 +2,7 @@ use crate::parse::{Instruction, ParseResult, RollbackableTokenStream};
 use crate::tokenize::TokenKind;
 
 pub fn volume(stream: &mut RollbackableTokenStream) -> ParseResult {
-    if !stream.expect_character(b'v') {
+    if !stream.expect_character('v') {
         return None;
     }
 

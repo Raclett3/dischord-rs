@@ -1,6 +1,6 @@
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum TokenKind {
-    Character(u8),
+    Character(char),
     Number(usize),
 }
 
@@ -39,19 +39,20 @@ pub fn tokenize(mml: &str) -> Result<Vec<Token>, String> {
         return Err("MML must not include any non-ascii characters".to_string());
     }
 
-    let mut bytes = mml.bytes().enumerate().peekable();
+    let mut chars = mml.chars().enumerate().peekable();
     let mut tokens = Vec::new();
 
-    while let Some((i, byte)) = bytes.next() {
-        let token = if b'0' <= byte && byte <= b'9' {
-            let mut number = (byte - b'0') as usize;
+    while let Some((i, byte)) = chars.next() {
+        let token = if '0' <= byte && byte <= '9' {
+            let mut number = (byte as u8 - b'0') as usize;
 
-            while let Some(&(_, peeked)) = bytes.peek() {
-                if !(b'0' <= peeked && peeked <= b'9') {
+            while let Some(&(_, peeked)) = chars.peek() {
+                if !('0' <= peeked && peeked <= '9') {
                     break;
                 }
                 let (multiplied, mul_overflowed) = number.overflowing_mul(10);
-                let (added, add_overflowed) = multiplied.overflowing_add((peeked - b'0') as usize);
+                let (added, add_overflowed) =
+                    multiplied.overflowing_add((peeked as u8 - b'0') as usize);
 
                 if mul_overflowed || add_overflowed {
                     return Err(format!("Too big number at {}", i + 1));
@@ -59,13 +60,13 @@ pub fn tokenize(mml: &str) -> Result<Vec<Token>, String> {
 
                 number = added;
 
-                bytes.next();
+                chars.next();
             }
 
             TokenKind::Number(number)
-        } else if b'A' <= byte && byte <= b'Z' {
-            TokenKind::Character(byte - b'A' + b'a')
-        } else if byte == b' ' || byte == b'\n' || byte == b'\r' {
+        } else if 'A' <= byte && byte <= 'Z' {
+            TokenKind::Character(byte.to_lowercase().next().unwrap())
+        } else if byte == ' ' || byte == '\n' || byte == '\r' {
             continue;
         } else {
             TokenKind::Character(byte)

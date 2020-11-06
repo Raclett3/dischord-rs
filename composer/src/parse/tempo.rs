@@ -2,7 +2,7 @@ use crate::parse::{Instruction, ParseResult, RollbackableTokenStream};
 use crate::tokenize::TokenKind;
 
 pub fn tempo(stream: &mut RollbackableTokenStream) -> ParseResult {
-    if !stream.expect_character(b't') {
+    if !stream.expect_character('t') {
         return None;
     }
 

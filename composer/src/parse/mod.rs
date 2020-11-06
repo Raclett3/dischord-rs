@@ -74,7 +74,7 @@ impl<'a> RollbackableTokenStream<'a> {
         }
     }
 
-    pub fn take_character(&mut self) -> Option<u8> {
+    pub fn take_character(&mut self) -> Option<char> {
         match self.peek() {
             Some((_, TokenKind::Character(ch))) => {
                 self.next();
@@ -89,7 +89,7 @@ impl<'a> RollbackableTokenStream<'a> {
 
         while let Some(number) = self.take_number() {
             numbers.push(number);
-            if !self.expect_character(b',') {
+            if !self.expect_character(',') {
                 break;
             }
         }
@@ -97,7 +97,7 @@ impl<'a> RollbackableTokenStream<'a> {
         numbers
     }
 
-    pub fn expect_character(&mut self, ch_a: u8) -> bool {
+    pub fn expect_character(&mut self, ch_a: char) -> bool {
         match self.next() {
             Some((_, TokenKind::Character(ch_b))) => ch_a == ch_b,
             _ => false,

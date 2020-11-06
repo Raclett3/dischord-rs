@@ -3,7 +3,7 @@ use composer::*;
 fn token_test() {
     use tokenize::TokenKind;
 
-    assert!(TokenKind::Character(b'c').is_character());
+    assert!(TokenKind::Character('c').is_character());
     assert!(TokenKind::Number(42).is_number());
 }
 
@@ -16,25 +16,25 @@ fn tokenize_test() {
     assert_eq!(
         tokenize("c256e16g4<CEG4"),
         Ok(vec![
-            (1, Character(b'c')),
+            (1, Character('c')),
             (2, Number(256)),
-            (5, Character(b'e')),
+            (5, Character('e')),
             (6, Number(16)),
-            (8, Character(b'g')),
+            (8, Character('g')),
             (9, Number(4)),
-            (10, Character(b'<')),
-            (11, Character(b'c')),
-            (12, Character(b'e')),
-            (13, Character(b'g')),
+            (10, Character('<')),
+            (11, Character('c')),
+            (12, Character('e')),
+            (13, Character('g')),
             (14, Number(4)),
         ])
     );
     assert_eq!(
         tokenize("C e\n\rG"),
         Ok(vec![
-            (1, Character(b'c')),
-            (3, Character(b'e')),
-            (6, Character(b'g')),
+            (1, Character('c')),
+            (3, Character('e')),
+            (6, Character('g')),
         ])
     );
 }
