@@ -61,20 +61,22 @@ impl<'a> RollbackableTokenStream<'a> {
     }
 }
 
+pub type Parser = fn(&mut RollbackableTokenStream) -> ParseResult;
+
 pub fn parse(tokens: &[Token]) -> Result<ParsedMML, String> {
     let mut stream = RollbackableTokenStream::new(tokens);
     let mut parsed = Vec::new();
 
     while !stream.empty() {
-        let parsers: [fn(&mut RollbackableTokenStream) -> ParseResult; 1] = [note::note];
+        let parsers = [note::note, note::rest, octave::octave, tempo::tempo];
         let result = parsers
             .iter()
-            .map(|parser| {
+            .map(|parser: &Parser| {
                 stream.rollback();
                 parser(&mut stream)
             })
-            .find(|x| x.is_some())
-            .flatten();
+            .flatten()
+            .next();
 
         match result {
             None => {

@@ -48,6 +48,23 @@ mod test {
         );
     }
 
+    #[test]
+    fn test_parse() {
+        use parse::{parse, Instruction::*, NoteLength::*};
+        use tokenize::tokenize;
+        assert_eq!(
+            parse(&tokenize("T150ab8r4&8..<c4").unwrap()).unwrap(),
+            vec![
+                Tempo(150),
+                Note(12, vec![DefaultLength]),
+                Note(14, vec![Length(8)]),
+                Rest(vec![Length(4), Length(8), Dot, Dot]),
+                Octave(1),
+                Note(3, vec![Length(4)])
+            ]
+        );
+    }
+
     fn single_parse<T>(parser: fn(&mut parse::RollbackableTokenStream) -> T, mml: &str) -> T {
         use parse::RollbackableTokenStream;
         use tokenize::tokenize;
