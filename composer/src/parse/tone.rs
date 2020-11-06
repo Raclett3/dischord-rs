@@ -16,6 +16,16 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
             }
             Some(Ok(Instruction::Detune(params[0], params[1] as f64 / 100.0)))
         }
+        Some((token_at, TokenKind::Character(b'e'))) => {
+            let params = stream.comma_separated_numbers();
+            if params.len() != 4 {
+                let err = format!("Wrong number of parameters at {}", token_at);
+                return Some(Err(err));
+            }
+            let params: Vec<_> = params.iter().map(|&x| x as f64 / 100.0).collect();
+            let envelope = Instruction::Envelope(params[0], params[1], params[2], params[3]);
+            Some(Ok(envelope))
+        }
         Some((token_at, TokenKind::Character(ch))) => {
             Some(Err(format!("Unexpected token {} at {}", ch, token_at)))
         }

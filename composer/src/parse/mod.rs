@@ -22,6 +22,7 @@ pub enum Instruction {
     Volume(f64),
     Tone(usize),
     Detune(usize, f64),
+    Envelope(f64, f64, f64, f64),
     Length(Vec<NoteLength>),
 }
 
