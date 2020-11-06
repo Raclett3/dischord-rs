@@ -16,6 +16,7 @@ pub enum NoteLength {
 #[derive(PartialEq, Debug)]
 pub enum Instruction {
     Note(isize, Vec<NoteLength>),
+    Chord(Vec<isize>, Vec<NoteLength>),
     Rest(Vec<NoteLength>),
     Octave(isize),
     Tempo(usize),

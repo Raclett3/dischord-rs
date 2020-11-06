@@ -131,3 +131,17 @@ fn test_tone() {
     assert!(single_parse(tone, "@").unwrap().is_err());
     assert!(single_parse(tone, "0").is_none());
 }
+
+#[test]
+fn test_chord() {
+    use parse::note::chord;
+    use parse::{Instruction::Chord, NoteLength::*};
+
+    assert_eq!(
+        single_parse(chord, "(CEG<C>C)2"),
+        Some(Ok(Chord(vec![3, 7, 10, 15, 3], vec![Length(2)])))
+    );
+    assert!(single_parse(chord, "(CE").unwrap().is_err());
+    assert!(single_parse(chord, "(CEH)").unwrap().is_err());
+    assert_eq!(single_parse(chord, "C4"), None);
+}

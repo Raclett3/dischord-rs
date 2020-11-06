@@ -45,18 +45,51 @@ pub fn length(stream: &mut RollbackableTokenStream) -> ParseResult {
     Some(Ok(Instruction::Rest(length)))
 }
 
+fn character_to_pitch(character: u8) -> Option<isize> {
+    match character {
+        b'c' => Some(3),
+        b'd' => Some(5),
+        b'e' => Some(7),
+        b'f' => Some(8),
+        b'g' => Some(10),
+        b'a' => Some(12),
+        b'b' => Some(14),
+        _ => None,
+    }
+}
+
+pub fn chord(stream: &mut RollbackableTokenStream) -> ParseResult {
+    if !stream.expect_character(b'(') {
+        return None;
+    }
+
+    let mut notes = Vec::new();
+    let mut octave = 0;
+
+    loop {
+        match stream.take_character() {
+            Some(b')') => break,
+            Some(b'<') => octave += 1,
+            Some(b'>') => octave -= 1,
+            None => return Some(Err("Unexpected EOF after (".to_string())),
+            Some(x) => {
+                if let Some(pitch) = character_to_pitch(x) {
+                    notes.push(pitch + octave * 12);
+                } else {
+                    return Some(Err(format!("Unexpected token {}", x)))
+                }
+            }
+        }
+    }
+
+    let length = parse_length(stream);
+
+    Some(Ok(Instruction::Chord(notes, length)))
+}
+
 pub fn note(stream: &mut RollbackableTokenStream) -> ParseResult {
     let character = stream.take_character()?;
-    let mut pitch = match character {
-        b'c' => 3,
-        b'd' => 5,
-        b'e' => 7,
-        b'f' => 8,
-        b'g' => 10,
-        b'a' => 12,
-        b'b' => 14,
-        _ => return None,
-    };
+    let mut pitch = character_to_pitch(character)?;
 
     loop {
         match stream.peek() {
