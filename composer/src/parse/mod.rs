@@ -53,7 +53,7 @@ impl<'a> RollbackableTokenStream<'a> {
     }
 
     pub fn empty(&self) -> bool {
-        self.cursor < self.tokens.len()
+        self.cursor >= self.tokens.len()
     }
 
     pub fn new(tokens: &'a [Token]) -> Self {
