@@ -27,7 +27,8 @@ pub enum Instruction {
     Length(Vec<NoteLength>),
 }
 
-pub type ParsedMML = Vec<Instruction>;
+pub type Track = Vec<Instruction>;
+pub type ParsedMML = Vec<Track>;
 
 type ParseResult = Option<Result<Instruction, String>>;
 
@@ -114,9 +115,26 @@ pub type Parser = fn(&mut RollbackableTokenStream) -> ParseResult;
 pub fn parse(tokens: &[Token]) -> Result<ParsedMML, String> {
     let mut stream = RollbackableTokenStream::new(tokens);
     let mut parsed = Vec::new();
+    let mut track = Vec::new();
 
     while !stream.empty() {
-        let parsers = [note::note, note::rest, octave::octave, tempo::tempo];
+        if let Some((_, TokenKind::Character(';'))) = stream.peek() {
+            stream.next();
+            stream.accept();
+            parsed.push(track);
+            track = Vec::new();
+            continue;
+        }
+
+        let parsers = [
+            note::note,
+            note::rest,
+            note::chord,
+            octave::octave,
+            tempo::tempo,
+            tone::tone,
+            volume::volume,
+        ];
         let result = parsers
             .iter()
             .map(|parser: &Parser| {
@@ -133,10 +151,14 @@ pub fn parse(tokens: &[Token]) -> Result<ParsedMML, String> {
                 return Err(format!("Unexpected token {} at {}", token_at, token));
             }
             Some(Err(x)) => return Err(x),
-            Some(Ok(x)) => parsed.push(x),
+            Some(Ok(x)) => track.push(x),
         }
 
         stream.accept();
+    }
+
+    if !track.is_empty() {
+        parsed.push(track);
     }
 
     Ok(parsed)

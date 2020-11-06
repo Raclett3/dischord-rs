@@ -5,14 +5,17 @@ fn test_parse() {
     use parse::{parse, Instruction, NoteLength::*};
     use tokenize::tokenize;
     assert_eq!(
-        parse(&tokenize("T150ab8r4&8..<c4").unwrap()).unwrap(),
+        parse(&tokenize("T150ab8r4&8..<c4;(cde)4").unwrap()).unwrap(),
         vec![
-            Instruction::Tempo(150),
-            Instruction::Note(12, vec![DefaultLength]),
-            Instruction::Note(14, vec![Length(8)]),
-            Instruction::Rest(vec![Length(4), Length(8), Dot, Dot]),
-            Instruction::Octave(1),
-            Instruction::Note(3, vec![Length(4)])
+            vec![
+                Instruction::Tempo(150),
+                Instruction::Note(12, vec![DefaultLength]),
+                Instruction::Note(14, vec![Length(8)]),
+                Instruction::Rest(vec![Length(4), Length(8), Dot, Dot]),
+                Instruction::Octave(1),
+                Instruction::Note(3, vec![Length(4)])
+            ],
+            vec![Instruction::Chord(vec![3, 5, 7], vec![Length(4)])]
         ]
     );
 }
