@@ -5,7 +5,7 @@ fn test_parse() {
     use parse::{parse, Instruction, NoteLength::*};
     use tokenize::tokenize;
     assert_eq!(
-        parse(&tokenize("T150ab8r4&8..<c4;(cde)4").unwrap()).unwrap(),
+        parse(&tokenize("T150ab8r4&8..<c4;(cde)4@2[c4d4]2").unwrap()).unwrap(),
         vec![
             vec![
                 Instruction::Tempo(150),
@@ -15,7 +15,17 @@ fn test_parse() {
                 Instruction::Octave(1),
                 Instruction::Note(3, vec![Length(4)])
             ],
-            vec![Instruction::Chord(vec![3, 5, 7], vec![Length(4)])]
+            vec![
+                Instruction::Chord(vec![3, 5, 7], vec![Length(4)]),
+                Instruction::Tone(2),
+                Instruction::Repeat(
+                    vec![
+                        Instruction::Note(3, vec![Length(4)]),
+                        Instruction::Note(5, vec![Length(4)])
+                    ],
+                    2
+                )
+            ]
         ]
     );
 }
@@ -147,4 +157,30 @@ fn test_chord() {
     assert!(single_parse(chord, "(CE").unwrap().is_err());
     assert!(single_parse(chord, "(CEH)").unwrap().is_err());
     assert_eq!(single_parse(chord, "C4"), None);
+}
+
+#[test]
+fn test_repeat() {
+    use parse::repeat::repeat;
+    use parse::{
+        Instruction::{Note, Repeat},
+        NoteLength::DefaultLength,
+    };
+
+    assert_eq!(
+        single_parse(repeat, "[CDE]4"),
+        Some(Ok(Repeat(
+            vec![
+                Note(3, vec![DefaultLength]),
+                Note(5, vec![DefaultLength]),
+                Note(7, vec![DefaultLength])
+            ],
+            4
+        )))
+    );
+    assert!(single_parse(repeat, "[CDE]").unwrap().is_err());
+    assert!(single_parse(repeat, "[CD;E]").unwrap().is_err());
+    assert!(single_parse(repeat, "[!?]").unwrap().is_err());
+    assert!(single_parse(repeat, "[CDE").unwrap().is_err());
+    assert!(single_parse(repeat, "94").is_none());
 }

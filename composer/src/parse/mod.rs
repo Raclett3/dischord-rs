@@ -1,5 +1,6 @@
 pub mod note;
 pub mod octave;
+pub mod repeat;
 pub mod tempo;
 pub mod tone;
 pub mod volume;
@@ -24,6 +25,7 @@ pub enum Instruction {
     Tone(usize),
     Detune(usize, f64),
     Envelope(f64, f64, f64, f64),
+    Repeat(Track, usize),
     Length(Vec<NoteLength>),
 }
 
@@ -32,6 +34,7 @@ pub type ParsedMML = Vec<Track>;
 
 type ParseResult = Option<Result<Instruction, String>>;
 
+#[derive(Clone)]
 pub struct RollbackableTokenStream<'a> {
     tokens: &'a [Token],
     cursor: usize,
@@ -117,17 +120,31 @@ impl<'a> RollbackableTokenStream<'a> {
 
 pub type Parser = fn(&mut RollbackableTokenStream) -> ParseResult;
 
-pub fn parse(tokens: &[Token]) -> Result<ParsedMML, String> {
-    let mut stream = RollbackableTokenStream::new(tokens);
+pub fn parse_stream(
+    stream: &mut RollbackableTokenStream,
+    inside_bracket: bool,
+) -> Result<ParsedMML, String> {
     let mut parsed = Vec::new();
     let mut track = Vec::new();
 
     while !stream.empty() {
         if stream.expect_character(';') {
+            if inside_bracket {
+                return Err("Unexpected token ;".to_string());
+            }
             stream.accept();
             parsed.push(track);
             track = Vec::new();
             continue;
+        }
+
+        if stream.expect_character(']') {
+            if inside_bracket {
+                stream.accept();
+                return Ok(vec![track]);
+            } else {
+                return Err("Unexpected token ]".to_string());
+            }
         }
 
         let parsers = [
@@ -138,12 +155,13 @@ pub fn parse(tokens: &[Token]) -> Result<ParsedMML, String> {
             tempo::tempo,
             tone::tone,
             volume::volume,
+            repeat::repeat,
         ];
         let result = parsers
             .iter()
             .map(|parser: &Parser| {
                 stream.rollback();
-                parser(&mut stream)
+                parser(stream)
             })
             .flatten()
             .next();
@@ -161,9 +179,18 @@ pub fn parse(tokens: &[Token]) -> Result<ParsedMML, String> {
         stream.accept();
     }
 
+    if inside_bracket {
+        return Err("Unexpected EOF".to_string());
+    }
+
     if !track.is_empty() {
         parsed.push(track);
     }
 
     Ok(parsed)
+}
+
+pub fn parse(tokens: &[Token]) -> Result<ParsedMML, String> {
+    let mut stream = RollbackableTokenStream::new(tokens);
+    parse_stream(&mut stream, false)
 }
