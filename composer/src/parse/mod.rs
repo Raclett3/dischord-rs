@@ -101,9 +101,11 @@ impl<'a> RollbackableTokenStream<'a> {
     pub fn expect_character(&mut self, ch_a: char) -> bool {
         match self.peek() {
             Some((_, TokenKind::Character(ch_b))) => {
-                self.next();
+                if ch_a == ch_b {
+                    self.next();
+                }
                 ch_a == ch_b
-            },
+            }
             _ => false,
         }
     }
