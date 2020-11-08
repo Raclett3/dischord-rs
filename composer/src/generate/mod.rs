@@ -1,3 +1,5 @@
+pub mod note;
+
 use crate::parse::NoteLength;
 
 pub fn note_length_to_float(length: Vec<NoteLength>, default: usize) -> f64 {
