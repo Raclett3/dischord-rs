@@ -50,3 +50,21 @@ fn test_note() {
         assert_float_eq(note.get_sample(position + 0.075), 1.0);
     }
 }
+
+#[test]
+fn test_note_queue() {
+    use generate::note::{Note, NotesQueue};
+
+    let note_a = Note::new(10.0, pulse, 0.8, 0.9, 3.0, 5.0);
+    let note_b = Note::new(20.0, pulse, 1.0, 0.9, 1.0, 6.0);
+    let note_c = Note::new(30.0, pulse, 0.9, 1.0, 2.0, 4.0);
+    let mut queue = NotesQueue::new(vec![note_a.clone(), note_b.clone(), note_c.clone()]);
+    assert_eq!(queue.next_before(0.5), None);
+    assert_eq!(queue.next_before(1.0), Some(note_b));
+    assert_eq!(queue.next_before(1.0), None);
+    assert_eq!(queue.next_before(2.0), Some(note_c));
+    assert_eq!(queue.next_before(2.0), None);
+    assert_eq!(queue.next_before(3.0), Some(note_a));
+    assert_eq!(queue.next_before(3.0), None);
+    assert_eq!(queue.next_before(10.0), None);
+}

@@ -1,6 +1,6 @@
 type Tone = fn(f64, f64) -> f64;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Note {
     frequency: f64,
     tone: Tone,
@@ -50,5 +50,28 @@ impl Note {
             start_at,
             end_at,
         }
+    }
+}
+
+pub struct NotesQueue {
+    notes: Vec<Note>,
+}
+
+impl NotesQueue {
+    pub fn new(mut notes: Vec<Note>) -> Self {
+        notes.sort_unstable_by(|a, b| {
+            b.start_at
+                .partial_cmp(&a.start_at)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        NotesQueue { notes }
+    }
+
+    pub fn next_before(&mut self, before: f64) -> Option<Note> {
+        if self.notes.last()?.is_waiting(before) {
+            return None;
+        }
+
+        Some(self.notes.remove(self.notes.len() - 1))
     }
 }
