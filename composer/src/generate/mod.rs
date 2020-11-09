@@ -2,17 +2,16 @@ pub mod note;
 
 use crate::parse::NoteLength;
 
-pub fn note_length_to_float(length: Vec<NoteLength>, default: usize) -> f64 {
+pub fn note_length_to_float(length: &[NoteLength], default: f64) -> f64 {
     length
         .iter()
-        .scan(default, |last, x| {
+        .scan(0.0, |last, x| {
             *last = match x {
                 NoteLength::DefaultLength => default,
-                NoteLength::Dot => *last * 2,
-                NoteLength::Length(l) => *l,
+                NoteLength::Dot => *last / 2.0,
+                NoteLength::Length(l) => 1.0 / (*l as f64),
             };
             Some(*last)
         })
-        .map(|x| 1.0 / (x as f64))
         .sum()
 }

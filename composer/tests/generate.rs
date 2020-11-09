@@ -15,7 +15,7 @@ fn test_note_length_to_float() {
     use parse::NoteLength::*;
 
     assert_float_eq(
-        note_length_to_float(vec![DefaultLength, Dot, Dot, Length(2), Dot], 4),
+        note_length_to_float(&[DefaultLength, Dot, Dot, Length(2), Dot], 1. / 4.),
         1. / 4. + 1. / 8. + 1. / 16. + 1. / 2. + 1. / 4.,
     );
 }
