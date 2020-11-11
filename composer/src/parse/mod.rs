@@ -151,6 +151,7 @@ pub fn parse_stream(
             note::note,
             note::rest,
             note::chord,
+            note::length,
             octave::octave,
             tempo::tempo,
             tone::tone,
