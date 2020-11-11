@@ -42,7 +42,7 @@ pub fn length(stream: &mut RollbackableTokenStream) -> ParseResult {
 
     let length = parse_length(stream);
 
-    Some(Ok(Instruction::Rest(length)))
+    Some(Ok(Instruction::Length(length)))
 }
 
 fn character_to_pitch(character: char) -> Option<isize> {

@@ -82,11 +82,11 @@ fn test_rest() {
 #[test]
 fn test_length() {
     use parse::note::length;
-    use parse::{Instruction::Rest, NoteLength::*};
+    use parse::{Instruction, NoteLength::*};
 
     assert_eq!(
         single_parse(length, "L8..L9"),
-        Some(Ok(Rest(vec![Length(8), Dot, Dot])))
+        Some(Ok(Instruction::Length(vec![Length(8), Dot, Dot])))
     );
     assert_eq!(single_parse(length, "DEF"), None);
 }
