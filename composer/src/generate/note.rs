@@ -6,6 +6,7 @@ pub struct Note {
     tone: Tone,
     volume_from: f64,
     volume_to: f64,
+    offset: f64,
     start_at: f64,
     end_at: f64,
 }
@@ -31,7 +32,7 @@ impl Note {
         let note_position = position - self.start_at;
         let progress_ratio = note_position / (self.end_at - self.start_at);
         let volume = self.volume_from + (self.volume_to - self.volume_from) * progress_ratio;
-        (self.tone)(self.frequency, note_position) * volume
+        (self.tone)(self.frequency, self.offset + note_position) * volume
     }
 
     pub fn new(
@@ -39,6 +40,7 @@ impl Note {
         tone: Tone,
         volume_from: f64,
         volume_to: f64,
+        offset: f64,
         start_at: f64,
         end_at: f64,
     ) -> Self {
@@ -47,6 +49,7 @@ impl Note {
             tone,
             volume_from,
             volume_to,
+            offset,
             start_at,
             end_at,
         }
