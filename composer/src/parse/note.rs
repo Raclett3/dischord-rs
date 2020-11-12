@@ -73,7 +73,16 @@ pub fn chord(stream: &mut RollbackableTokenStream) -> ParseResult {
             Some('>') => octave -= 1,
             None => return Some(Err("Unexpected EOF after (".to_string())),
             Some(x) => {
-                if let Some(pitch) = character_to_pitch(x) {
+                if let Some(mut pitch) = character_to_pitch(x) {
+                    loop {
+                        if stream.expect_character('+') {
+                            pitch += 1;
+                        } else if stream.expect_character('-') {
+                            pitch -= 1;
+                        } else {
+                            break;
+                        }
+                    }
                     notes.push(pitch + octave * 12);
                 } else {
                     return Some(Err(format!("Unexpected token {}", x)))

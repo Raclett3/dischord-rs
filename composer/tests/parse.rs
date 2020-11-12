@@ -151,8 +151,8 @@ fn test_chord() {
     use parse::{Instruction::Chord, NoteLength::*};
 
     assert_eq!(
-        single_parse(chord, "(CEG<C>C)2"),
-        Some(Ok(Chord(vec![3, 7, 10, 15, 3], vec![Length(2)])))
+        single_parse(chord, "(CEG<C->C+)2"),
+        Some(Ok(Chord(vec![3, 7, 10, 14, 4], vec![Length(2)])))
     );
     assert!(single_parse(chord, "(CE").unwrap().is_err());
     assert!(single_parse(chord, "(CEH)").unwrap().is_err());
