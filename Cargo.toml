@@ -9,3 +9,4 @@ members = ["composer"]
 
 [dependencies]
 composer = {"path" = "./composer"}
+cpal = "0.13"
