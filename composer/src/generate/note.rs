@@ -1,4 +1,4 @@
-type Tone = fn(f64, f64) -> f64;
+use crate::generate::Tone;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Note {
@@ -35,6 +35,10 @@ impl Note {
         (self.tone)(self.frequency, self.offset + note_position) * volume
     }
 
+    pub fn end_at(&self) -> f64 {
+        self.end_at
+    }
+
     pub fn new(
         frequency: f64,
         tone: Tone,
@@ -56,6 +60,7 @@ impl Note {
     }
 }
 
+#[derive(Debug)]
 pub struct NotesQueue {
     notes: Vec<Note>,
 }
@@ -76,5 +81,9 @@ impl NotesQueue {
         }
 
         Some(self.notes.remove(self.notes.len() - 1))
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.notes.is_empty()
     }
 }
