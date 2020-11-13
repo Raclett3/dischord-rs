@@ -176,6 +176,18 @@ impl<'a> TrackState<'a> {
     }
 }
 
+fn u16_to_bytes(value: u16) -> impl Iterator<Item = u8> {
+    (0..2).map(move |x| (value >> (x * 8)) as u8)
+}
+
+fn i16_to_bytes(value: i16) -> impl Iterator<Item = u8> {
+    (0..2).map(move |x| (value >> (x * 8)) as u8)
+}
+
+fn u32_to_bytes(value: u32) -> impl Iterator<Item = u8> {
+    (0..4).map(move |x| (value >> (x * 8)) as u8)
+}
+
 #[derive(Debug)]
 pub struct Generator {
     sample_rate: f64,
@@ -226,6 +238,43 @@ impl Generator {
 
     pub fn track_length(&self) -> f64 {
         self.track_length
+    }
+
+    pub fn into_riff(self) -> Vec<u8> {
+        let sample_rate = self.sample_rate as u32;
+        let channels = 1;
+        let bits_per_sample = 16;
+        let block_align = channels * bits_per_sample / 8u16;
+        let byte_rate = sample_rate * block_align as u32;
+
+        let mut riff: Vec<_> = std::iter::empty()
+            // RIFF Chunk
+            .chain(b"RIFF".iter().copied())
+            .chain(u32_to_bytes(0)) // Chunk Size: Overwrite later
+            .chain(b"WAVE".iter().copied())
+            // Format Subchunk
+            .chain(b"fmt ".iter().copied()) // Subchunk ID
+            .chain(u32_to_bytes(16)) // Subchunk Size
+            .chain(u16_to_bytes(1)) // PCM
+            .chain(u16_to_bytes(channels as u16))
+            .chain(u32_to_bytes(sample_rate))
+            .chain(u32_to_bytes(byte_rate))
+            .chain(u16_to_bytes(block_align))
+            .chain(u16_to_bytes(bits_per_sample))
+            .chain(b"data".iter().copied())
+            .chain(u32_to_bytes(0)) // Data Size: Overwrite later
+            .chain(self.flat_map(|sample| i16_to_bytes((sample * 32767.0) as i16)))
+            .collect();
+
+        for (i, byte) in (4..=7).zip(u32_to_bytes(riff.len() as u32)) {
+            riff[i] = byte;
+        }
+
+        for (i, byte) in (40..=43).zip(u32_to_bytes(riff.len() as u32 - 44)) {
+            riff[i] = byte;
+        }
+
+        riff
     }
 }
 
