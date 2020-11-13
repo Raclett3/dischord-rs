@@ -14,7 +14,7 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
                 let err = format!("Wrong number of parameters at {}", token_at);
                 return Some(Err(err));
             }
-            Some(Ok(Instruction::Detune(params[0], params[1] as f64 / 100.0)))
+            Some(Ok(Instruction::Detune(params[0], params[1] as f64 / 10000.0)))
         }
         Some((token_at, TokenKind::Character('e'))) => {
             let params = stream.comma_separated_numbers();
