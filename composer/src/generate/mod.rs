@@ -38,72 +38,77 @@ fn partial_max<T: Copy + PartialOrd>(a: T, b: T) -> T {
 
 pub fn parse_note(length: f64, pitch: isize, state: &TrackState, notes: &mut Vec<Note>) {
     let (attack, decay, sustain, release) = state.envelope;
-    let frequency = 220.0 * (2.0f64).powf((state.octave * 12 + pitch) as f64 / 12.0);
-    if state.envelope.0 != 0.0 {
-        let attack_len = partial_min(length, attack);
-        let note = Note::new(
-            frequency,
-            state.tone,
-            0.0,
-            state.volume * attack_len / attack,
-            0.0,
-            state.position,
-            state.position + attack_len,
-        );
-        notes.push(note);
-    }
+    let (unison_count, detune) = state.detune;
+    let mut frequency = 220.0 * (2.0f64).powf((state.octave * 12 + pitch) as f64 / 12.0);
 
-    if decay > 0.0 && length > attack {
-        let decay_len = partial_min(length - attack, decay);
-        let note = Note::new(
-            frequency,
-            state.tone,
-            state.volume,
-            state.volume - (state.volume - state.volume * sustain) * decay_len / decay,
-            attack,
-            state.position + attack,
-            state.position + attack + decay_len,
-        );
-        notes.push(note);
-    }
+    for _ in 0..unison_count {
+        if state.envelope.0 != 0.0 {
+            let attack_len = partial_min(length, attack);
+            let note = Note::new(
+                frequency,
+                state.tone,
+                0.0,
+                state.volume * attack_len / attack,
+                0.0,
+                state.position,
+                state.position + attack_len,
+            );
+            notes.push(note);
+        }
 
-    if length > attack + decay {
-        let sustain_len = length - (attack + decay);
-        let note = Note::new(
-            frequency,
-            state.tone,
-            state.volume * sustain,
-            state.volume * sustain,
-            attack + decay,
-            state.position + attack + decay,
-            state.position + attack + decay + sustain_len,
-        );
-        notes.push(note);
-    }
+        if decay > 0.0 && length > attack {
+            let decay_len = partial_min(length - attack, decay);
+            let note = Note::new(
+                frequency,
+                state.tone,
+                state.volume,
+                state.volume - (state.volume - state.volume * sustain) * decay_len / decay,
+                attack,
+                state.position + attack,
+                state.position + attack + decay_len,
+            );
+            notes.push(note);
+        }
 
-    if release > 0.0 {
-        let sustain_volume = state.volume * sustain;
+        if length > attack + decay {
+            let sustain_len = length - (attack + decay);
+            let note = Note::new(
+                frequency,
+                state.tone,
+                state.volume * sustain,
+                state.volume * sustain,
+                attack + decay,
+                state.position + attack + decay,
+                state.position + attack + decay + sustain_len,
+            );
+            notes.push(note);
+        }
 
-        let init_volume = if length < attack {
-            length / attack * state.volume
-        } else if length < attack + decay {
-            let decay_length = length - decay;
-            state.volume - (state.volume - state.volume * sustain) * decay_length / decay
-        } else {
-            sustain_volume
-        };
+        if release > 0.0 {
+            let sustain_volume = state.volume * sustain;
+            let init_volume = if length < attack {
+                length / attack * state.volume
+            } else if length < attack + decay {
+                let decay_length = length - decay;
+                state.volume - (state.volume - state.volume * sustain) * decay_length / decay
+            } else {
+                sustain_volume
+            };
 
-        let release_len = release * init_volume / sustain_volume;
-        let note = Note::new(
-            frequency,
-            state.tone,
-            init_volume,
-            0.0,
-            length,
-            state.position + length,
-            state.position + length + release_len,
-        );
-        notes.push(note);
+            let release_len = release * init_volume / sustain_volume;
+            let note = Note::new(
+                frequency,
+                state.tone,
+                init_volume,
+                0.0,
+                length,
+                state.position + length,
+                state.position + length + release_len,
+            );
+            notes.push(note);
+        }
+
+        frequency *= 1.0 + detune;
     }
 }
 
