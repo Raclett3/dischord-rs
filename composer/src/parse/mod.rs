@@ -44,9 +44,9 @@ impl Iterator for RollbackableTokenStream<'_> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let item = self.tokens.get(self.cursor).copied();
+        let item = self.tokens.get(self.cursor);
         self.cursor += 1;
-        item
+        item.copied()
     }
 }
 
@@ -68,21 +68,21 @@ impl<'a> RollbackableTokenStream<'a> {
         self.cursor >= self.tokens.len()
     }
 
-    pub fn take_number(&mut self) -> Option<usize> {
+    pub fn take_number(&mut self) -> Option<(usize, usize)> {
         match self.peek() {
-            Some((_, TokenKind::Number(num))) => {
+            Some((token_at, TokenKind::Number(num))) => {
                 self.next();
-                Some(num)
+                Some((token_at, num))
             }
             _ => None,
         }
     }
 
-    pub fn take_character(&mut self) -> Option<char> {
+    pub fn take_character(&mut self) -> Option<(usize, char)> {
         match self.peek() {
-            Some((_, TokenKind::Character(ch))) => {
+            Some((token_at, TokenKind::Character(ch))) => {
                 self.next();
-                Some(ch)
+                Some((token_at, ch))
             }
             _ => None,
         }
@@ -91,7 +91,7 @@ impl<'a> RollbackableTokenStream<'a> {
     pub fn comma_separated_numbers(&mut self) -> Vec<usize> {
         let mut numbers = vec![];
 
-        while let Some(number) = self.take_number() {
+        while let Some((_, number)) = self.take_number() {
             numbers.push(number);
             if !self.expect_character(',') {
                 break;
