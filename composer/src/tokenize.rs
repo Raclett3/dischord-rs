@@ -2,20 +2,28 @@
 pub enum TokenKind {
     Character(char),
     Number(usize),
+    BraceString(String),
 }
 
 impl TokenKind {
     pub fn is_character(&self) -> bool {
         match self {
             TokenKind::Character(_) => true,
-            TokenKind::Number(_) => false,
+            _ => false,
         }
     }
 
     pub fn is_number(&self) -> bool {
         match self {
             TokenKind::Number(_) => true,
-            TokenKind::Character(_) => false,
+            _ => false,
+        }
+    }
+
+    pub fn is_brace_string(&self) -> bool {
+        match self {
+            TokenKind::BraceString(_) => true,
+            _ => false,
         }
     }
 }
@@ -27,6 +35,7 @@ impl fmt::Display for TokenKind {
         match self {
             TokenKind::Character(x) => write!(f, "{}", x),
             TokenKind::Number(x) => write!(f, "{}", x),
+            TokenKind::BraceString(x) => write!(f, "{}", x),
         }
     }
 }
@@ -64,9 +73,21 @@ pub fn tokenize(mml: &str) -> Result<Vec<Token>, String> {
             }
 
             TokenKind::Number(number)
+        } else if byte == '{' {
+            let mut string = String::new();
+
+            loop {
+                let peeked = chars.next();
+                match peeked {
+                    Some((_, '}')) => break TokenKind::BraceString(string),
+                    Some((_, x)) if !x.is_whitespace() => string.push(x),
+                    Some((_, _)) => (),
+                    None => return Err("Unexpected EOF".to_string()),
+                }
+            }
         } else if 'A' <= byte && byte <= 'Z' {
             TokenKind::Character(byte.to_lowercase().next().unwrap())
-        } else if byte == ' ' || byte == '\n' || byte == '\r' {
+        } else if byte.is_whitespace() {
             continue;
         } else {
             TokenKind::Character(byte)
