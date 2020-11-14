@@ -26,9 +26,9 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
             let envelope = Instruction::Envelope(params[0], params[1], params[2], params[3]);
             Some(Ok(envelope))
         }
-        Some((token_at, TokenKind::Character(ch))) => {
-            Some(Err(format!("Unexpected token {} at {}", ch, token_at)))
+        Some((token_at, token)) => {
+            Some(Err(format!("Unexpected token {} at {}", token, token_at)))
         }
-        _ => Some(Err("Unexpected EOF after the token @".to_string())),
+        None => Some(Err("Unexpected EOF after the token @".to_string())),
     }
 }
