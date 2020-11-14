@@ -7,7 +7,7 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
     }
 
     match stream.next() {
-        Some((_, TokenKind::Number(num))) => Some(Ok(Instruction::Tone(num))),
+        Some(&(_, TokenKind::Number(num))) => Some(Ok(Instruction::Tone(num))),
         Some((token_at, TokenKind::Character('d'))) => {
             let params = stream.comma_separated_numbers();
             if params.len() != 2 {

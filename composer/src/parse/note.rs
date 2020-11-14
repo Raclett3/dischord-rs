@@ -4,7 +4,7 @@ use crate::tokenize::TokenKind;
 pub fn parse_length(stream: &mut RollbackableTokenStream) -> Vec<NoteLength> {
     let mut length = vec![];
     loop {
-        if let Some((_, TokenKind::Number(num))) = stream.peek() {
+        if let Some(&(_, TokenKind::Number(num))) = stream.peek() {
             stream.next();
             length.push(NoteLength::Length(num))
         } else {

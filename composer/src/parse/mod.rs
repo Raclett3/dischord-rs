@@ -40,13 +40,13 @@ pub struct RollbackableTokenStream<'a> {
     cursor: usize,
 }
 
-impl Iterator for RollbackableTokenStream<'_> {
-    type Item = Token;
+impl<'a> Iterator for RollbackableTokenStream<'a> {
+    type Item = &'a Token;
 
     fn next(&mut self) -> Option<Self::Item> {
         let item = self.tokens.get(self.cursor);
         self.cursor += 1;
-        item.copied()
+        item
     }
 }
 
@@ -60,8 +60,8 @@ impl<'a> RollbackableTokenStream<'a> {
         self.cursor = 0;
     }
 
-    pub fn peek(&self) -> Option<Token> {
-        self.tokens.get(self.cursor).copied()
+    pub fn peek(&self) -> Option<&'a Token> {
+        self.tokens.get(self.cursor)
     }
 
     pub fn empty(&self) -> bool {
@@ -70,7 +70,7 @@ impl<'a> RollbackableTokenStream<'a> {
 
     pub fn take_number(&mut self) -> Option<(usize, usize)> {
         match self.peek() {
-            Some((token_at, TokenKind::Number(num))) => {
+            Some(&(token_at, TokenKind::Number(num))) => {
                 self.next();
                 Some((token_at, num))
             }
@@ -80,7 +80,7 @@ impl<'a> RollbackableTokenStream<'a> {
 
     pub fn take_character(&mut self) -> Option<(usize, char)> {
         match self.peek() {
-            Some((token_at, TokenKind::Character(ch))) => {
+            Some(&(token_at, TokenKind::Character(ch))) => {
                 self.next();
                 Some((token_at, ch))
             }
@@ -103,7 +103,7 @@ impl<'a> RollbackableTokenStream<'a> {
 
     pub fn expect_character(&mut self, ch_a: char) -> bool {
         match self.peek() {
-            Some((_, TokenKind::Character(ch_b))) => {
+            Some(&(_, TokenKind::Character(ch_b))) => {
                 if ch_a == ch_b {
                     self.next();
                 }

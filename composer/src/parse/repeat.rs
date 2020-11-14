@@ -15,7 +15,7 @@ pub fn repeat(stream: &mut RollbackableTokenStream) -> ParseResult {
     };
 
     match cloned_stream.next() {
-        Some((_, TokenKind::Number(num))) => {
+        Some(&(_, TokenKind::Number(num))) => {
             *stream = cloned_stream;
             Some(Ok(Instruction::Repeat(inside, num)))
         },
