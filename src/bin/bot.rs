@@ -17,7 +17,7 @@ static MANUAL: &str = "```
 Dischord
 dc!help Dischordのヘルプを表示
 dc!play [MML] MMLを音声ファイルに書き出し
-dc!vcplay [MML] MMLから音声を出力し、VCで再生
+
 Dischord MML 文法
 以下の文字列を連ねて記述します。小文字のアルファベット部分はパラメータとして整数を入れます。
 CDEFGABRn ドレミファソラシと休符に対応しています。数字を後ろにつけるとn分音符を表現します。
