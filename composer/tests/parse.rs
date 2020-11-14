@@ -129,7 +129,7 @@ fn test_tone() {
     use parse::Instruction::{Detune, Envelope, Tone};
 
     assert_eq!(single_parse(tone, "@2"), Some(Ok(Tone(2))));
-    assert_eq!(single_parse(tone, "@D2,100"), Some(Ok(Detune(2, 1.0))));
+    assert_eq!(single_parse(tone, "@D2,10000"), Some(Ok(Detune(2, 1.0))));
     assert!(single_parse(tone, "@D3").unwrap().is_err());
     assert!(single_parse(tone, "@D1,10,100").unwrap().is_err());
     assert_eq!(
