@@ -203,7 +203,7 @@ pub struct TrackState<'a> {
 }
 
 impl<'a> TrackState<'a> {
-    pub fn new(fn_tones: &'a [FnTone]) -> Self {
+    pub fn new(fn_tones: &'a [FnTone], pcm_tones: Vec<Arc<Vec<f64>>>) -> Self {
         Self {
             position: 0.0,
             tempo: 120.0,
@@ -214,7 +214,7 @@ impl<'a> TrackState<'a> {
             octave: 0,
             detune: (1, 0.0),
             envelope: (0.0, 0.0, 1.0, 0.0),
-            pcm_tones: Vec::new(),
+            pcm_tones,
         }
     }
 }
@@ -254,11 +254,13 @@ impl Generator {
     pub fn new(sample_rate: f64, tracks: &[Track]) -> Self {
         let mut notes = Vec::new();
         let mut tempo = 120.0;
+        let mut pcm_tones = Vec::new();
         for track in tracks {
-            let mut state = TrackState::new(TONES);
+            let mut state = TrackState::new(TONES, pcm_tones);
             state.tempo = tempo;
             parse_track(track, &mut state, &mut notes);
             tempo = state.tempo;
+            pcm_tones = state.pcm_tones;
         }
 
         let track_length = notes
