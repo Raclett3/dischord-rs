@@ -90,7 +90,7 @@ pub fn parse_note<'a>(length: f64, pitch: isize, state: &TrackState<'a>, notes: 
             let init_volume = if length < attack {
                 length / attack * state.volume
             } else if length < attack + decay {
-                let decay_length = length - decay;
+                let decay_length = length - attack;
                 state.volume - (state.volume - state.volume * sustain) * decay_length / decay
             } else {
                 sustain_volume
