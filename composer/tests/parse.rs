@@ -130,8 +130,6 @@ fn test_tone() {
 
     assert_eq!(single_parse(tone, "@2"), Some(Ok(Tone(2))));
     assert_eq!(single_parse(tone, "@D2,10000"), Some(Ok(Detune(2, 1.0))));
-    assert!(single_parse(tone, "@D3").unwrap().is_err());
-    assert!(single_parse(tone, "@D1,10,100").unwrap().is_err());
     assert_eq!(
         single_parse(tone, "@E0,100,100,200"),
         Some(Ok(Envelope(0.0, 1.0, 1.0, 2.0)))
