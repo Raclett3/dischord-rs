@@ -160,11 +160,6 @@ pub fn parse_instruction<'a>(
             } else {
                 Tone::FnTone(state.fn_tones[0])
             };
-            /*state.tone = state
-            .pcm_tones
-            .get(*pcm)
-            .map(|x| Tone::PCMTone(x.as_slice()))
-            .unwrap_or(Tone::FnTone(state.fn_tones[0]));*/
         }
     }
 }
