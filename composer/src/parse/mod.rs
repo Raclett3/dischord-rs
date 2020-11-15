@@ -22,6 +22,7 @@ pub enum Instruction {
     Octave(isize),
     Tempo(usize),
     Volume(f64),
+    Gate(f64),
     Tone(usize),
     DefinePCMTone(Vec<f64>),
     PCMTone(usize),

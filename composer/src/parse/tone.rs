@@ -66,6 +66,16 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
             };
             Some(Ok(Instruction::PCMTone(num)))
         }
+        Some((_, TokenKind::Character('g'))) => {
+            let gate = match stream.next() {
+                Some((_, TokenKind::Number(x))) => *x,
+                Some((token_at, token)) => {
+                    return Some(Err(format!("Unexpected token {} at {}", token, token_at)));
+                }
+                None => return Some(Err("Unexpected EOF after the token @p".to_string())),
+            };
+            Some(Ok(Instruction::Gate(gate as f64 / 1000.0)))
+        }
         Some((token_at, token)) => Some(Err(format!("Unexpected token {} at {}", token, token_at))),
         None => Some(Err("Unexpected EOF after the token @".to_string())),
     }

@@ -41,6 +41,7 @@ pub fn parse_note<'a>(length: f64, pitch: isize, state: &TrackState<'a>, notes: 
     let (attack, decay, sustain, release) = state.envelope;
     let (unison_count, detune) = state.detune;
     let mut frequency = 220.0 * (2.0f64).powf((state.octave * 12 + pitch) as f64 / 12.0);
+    let length = partial_max(length - state.gate, 0.0);
 
     for _ in 0..unison_count {
         if state.envelope.0 != 0.0 {
@@ -161,6 +162,7 @@ pub fn parse_instruction<'a>(
                 Tone::FnTone(state.fn_tones[0])
             };
         }
+        Instruction::Gate(gate) => state.gate = *gate,
     }
 }
 
@@ -199,6 +201,7 @@ pub struct TrackState<'a> {
     octave: isize,
     detune: (usize, f64),
     envelope: (f64, f64, f64, f64),
+    gate: f64,
     pcm_tones: Vec<Arc<Vec<f64>>>,
 }
 
@@ -214,6 +217,7 @@ impl<'a> TrackState<'a> {
             octave: 0,
             detune: (1, 0.0),
             envelope: (0.0, 0.0, 1.0, 0.0),
+            gate: 0.001,
             pcm_tones,
         }
     }
