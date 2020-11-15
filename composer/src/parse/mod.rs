@@ -23,6 +23,8 @@ pub enum Instruction {
     Tempo(usize),
     Volume(f64),
     Tone(usize),
+    DefinePCMTone(Vec<f64>),
+    PCMTone(usize),
     Detune(usize, f64),
     Envelope(f64, f64, f64, f64),
     Repeat(Track, usize),

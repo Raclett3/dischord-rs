@@ -32,7 +32,9 @@ impl Note {
         let note_position = position - self.start_at;
         let progress_ratio = note_position / (self.end_at - self.start_at);
         let volume = self.volume_from + (self.volume_to - self.volume_from) * progress_ratio;
-        (self.tone)(self.frequency, self.offset + note_position) * volume
+        self.tone
+            .sample(self.frequency, self.offset + note_position)
+            * volume
     }
 
     pub fn end_at(&self) -> f64 {

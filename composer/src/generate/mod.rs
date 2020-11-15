@@ -3,8 +3,9 @@ pub mod tones;
 
 use crate::parse::{Instruction, NoteLength, Track};
 use note::{Note, NotesQueue};
+use std::sync::Arc;
 
-pub type Tone = fn(f64, f64) -> f64;
+pub type FnTone = fn(f64, f64) -> f64;
 
 pub fn note_length_to_float(length: &[NoteLength], default: f64) -> f64 {
     length
@@ -36,7 +37,12 @@ fn partial_max<T: Copy + PartialOrd>(a: T, b: T) -> T {
     }
 }
 
-pub fn parse_note(length: f64, pitch: isize, state: &TrackState, notes: &mut Vec<Note>) {
+pub fn parse_note<'a>(
+    length: f64,
+    pitch: isize,
+    state: &TrackState<'a>,
+    notes: &mut Vec<Note>,
+) {
     let (attack, decay, sustain, release) = state.envelope;
     let (unison_count, detune) = state.detune;
     let mut frequency = 220.0 * (2.0f64).powf((state.octave * 12 + pitch) as f64 / 12.0);
@@ -46,7 +52,7 @@ pub fn parse_note(length: f64, pitch: isize, state: &TrackState, notes: &mut Vec
             let attack_len = partial_min(length, attack);
             let note = Note::new(
                 frequency,
-                state.tone,
+                state.tone.clone(),
                 0.0,
                 state.volume * attack_len / attack,
                 0.0,
@@ -60,7 +66,7 @@ pub fn parse_note(length: f64, pitch: isize, state: &TrackState, notes: &mut Vec
             let decay_len = partial_min(length - attack, decay);
             let note = Note::new(
                 frequency,
-                state.tone,
+                state.tone.clone(),
                 state.volume,
                 state.volume - (state.volume - state.volume * sustain) * decay_len / decay,
                 attack,
@@ -74,7 +80,7 @@ pub fn parse_note(length: f64, pitch: isize, state: &TrackState, notes: &mut Vec
             let sustain_len = length - (attack + decay);
             let note = Note::new(
                 frequency,
-                state.tone,
+                state.tone.clone(),
                 state.volume * sustain,
                 state.volume * sustain,
                 attack + decay,
@@ -98,7 +104,7 @@ pub fn parse_note(length: f64, pitch: isize, state: &TrackState, notes: &mut Vec
             let release_len = release * init_volume / sustain_volume;
             let note = Note::new(
                 frequency,
-                state.tone,
+                state.tone.clone(),
                 init_volume,
                 0.0,
                 length,
@@ -112,12 +118,18 @@ pub fn parse_note(length: f64, pitch: isize, state: &TrackState, notes: &mut Vec
     }
 }
 
-pub fn parse_instruction(inst: &Instruction, state: &mut TrackState, notes: &mut Vec<Note>) {
+pub fn parse_instruction<'a>(
+    inst: &Instruction,
+    state: &mut TrackState<'a>,
+    notes: &mut Vec<Note>,
+) {
     match inst {
         Instruction::Octave(octave) => state.octave += octave,
         Instruction::Tempo(tempo) => state.tempo = *tempo as f64,
         Instruction::Volume(volume) => state.volume = *volume as f64,
-        Instruction::Tone(tone) => state.tone = *state.tones.get(*tone).unwrap_or(&state.tones[0]),
+        Instruction::Tone(tone) => {
+            state.tone = Tone::FnTone(*state.fn_tones.get(*tone).unwrap_or(&state.fn_tones[0]))
+        }
         Instruction::Detune(number, ratio) => state.detune = (*number, *ratio),
         Instruction::Envelope(a, d, s, r) => state.envelope = (*a, *d, *s, *r),
         Instruction::Note(pitch, length) => {
@@ -144,12 +156,50 @@ pub fn parse_instruction(inst: &Instruction, state: &mut TrackState, notes: &mut
                 parse_track(track, state, notes);
             }
         }
+        Instruction::DefinePCMTone(pcm) => {
+            state.pcm_tones.push(Arc::new(pcm.clone()));
+        }
+        Instruction::PCMTone(pcm) => {
+            state.tone = if *pcm < state.pcm_tones.len() {
+                Tone::PCMTone(state.pcm_tones[*pcm].clone())
+            } else {
+                Tone::FnTone(state.fn_tones[0])
+            };
+            /*state.tone = state
+                .pcm_tones
+                .get(*pcm)
+                .map(|x| Tone::PCMTone(x.as_slice()))
+                .unwrap_or(Tone::FnTone(state.fn_tones[0]));*/
+        }
     }
 }
 
-pub fn parse_track(track: &[Instruction], state: &mut TrackState, notes: &mut Vec<Note>) {
+pub fn parse_track<'a>(
+    track: &[Instruction],
+    state: &mut TrackState<'a>,
+    notes: &mut Vec<Note>,
+) {
     for inst in track {
         parse_instruction(inst, state, notes);
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Tone {
+    FnTone(FnTone),
+    PCMTone(Arc<Vec<f64>>),
+}
+
+impl Tone {
+    pub fn sample(&self, frequency: f64, position: f64) -> f64 {
+        match self {
+            Tone::FnTone(tone) => tone(frequency, position),
+            Tone::PCMTone(tone) => {
+                let len = tone.len() as f64;
+                let index = ((frequency * position * len) % len) as usize;
+                tone[index]
+            }
+        }
     }
 }
 
@@ -159,24 +209,26 @@ pub struct TrackState<'a> {
     default_length: f64,
     volume: f64,
     tone: Tone,
-    tones: &'a [Tone],
+    fn_tones: &'a [FnTone],
     octave: isize,
     detune: (usize, f64),
     envelope: (f64, f64, f64, f64),
+    pcm_tones: Vec<Arc<Vec<f64>>>,
 }
 
 impl<'a> TrackState<'a> {
-    pub fn new(tones: &'a [Tone]) -> Self {
+    pub fn new(fn_tones: &'a [FnTone]) -> Self {
         Self {
             position: 0.0,
             tempo: 120.0,
             default_length: 1.0 / 8.0,
             volume: 1.0,
-            tone: tones[0],
-            tones,
+            tone: Tone::FnTone(fn_tones[0]),
+            fn_tones,
             octave: 0,
             detune: (1, 0.0),
             envelope: (0.0, 0.0, 1.0, 0.0),
+            pcm_tones: Vec::new(),
         }
     }
 }
@@ -202,7 +254,7 @@ pub struct Generator {
     track_length: f64,
 }
 
-static TONES: &[Tone] = &[
+static TONES: &[FnTone] = &[
     tones::pulse50,
     tones::pulse25,
     tones::pulse125,
