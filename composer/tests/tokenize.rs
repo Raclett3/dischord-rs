@@ -28,7 +28,7 @@ fn tokenize_test() {
             (12, Character('e')),
             (13, Character('g')),
             (14, Number(4)),
-            (15, BraceString("ThisIsString".to_string()))
+            (15, BraceString("thisisstring".to_string()))
         ])
     );
     assert_eq!(

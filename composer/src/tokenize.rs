@@ -80,7 +80,9 @@ pub fn tokenize(mml: &str) -> Result<Vec<Token>, String> {
                 let peeked = chars.next();
                 match peeked {
                     Some((_, '}')) => break TokenKind::BraceString(string),
-                    Some((_, x)) if !x.is_whitespace() => string.push(x),
+                    Some((_, x)) if !x.is_whitespace() => {
+                        string.push(x.to_lowercase().next().unwrap())
+                    }
                     Some((_, _)) => (),
                     None => return Err("Unexpected EOF".to_string()),
                 }
