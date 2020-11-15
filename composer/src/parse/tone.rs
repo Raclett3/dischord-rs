@@ -24,7 +24,10 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
                 let err = format!("Wrong number of parameters at {}", token_at);
                 return Some(Err(err));
             }
-            Some(Ok(Instruction::Detune(params[0], params[1] as f64 / 10000.0)))
+            Some(Ok(Instruction::Detune(
+                params[0],
+                params[1] as f64 / 10000.0,
+            )))
         }
         Some((token_at, TokenKind::Character('e'))) => {
             let params = stream.comma_separated_numbers();
@@ -44,7 +47,8 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
                         hex_to_num(byte)
                             .map(|x| (x as f64 - 8.0) / 8.0)
                             .unwrap_or(0.0)
-                    }).collect(),
+                    })
+                    .collect(),
                 Some((token_at, token)) => {
                     return Some(Err(format!("Unexpected token {} at {}", token, token_at)));
                 }
@@ -62,9 +66,7 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
             };
             Some(Ok(Instruction::PCMTone(num)))
         }
-        Some((token_at, token)) => {
-            Some(Err(format!("Unexpected token {} at {}", token, token_at)))
-        }
+        Some((token_at, token)) => Some(Err(format!("Unexpected token {} at {}", token, token_at))),
         None => Some(Err("Unexpected EOF after the token @".to_string())),
     }
 }

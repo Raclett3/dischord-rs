@@ -85,7 +85,7 @@ pub fn chord(stream: &mut RollbackableTokenStream) -> ParseResult {
                     }
                     notes.push(pitch + octave * 12);
                 } else {
-                    return Some(Err(format!("Unexpected token {} at {}", x, token_at)))
+                    return Some(Err(format!("Unexpected token {} at {}", x, token_at)));
                 }
             }
         }

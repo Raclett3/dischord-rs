@@ -18,8 +18,8 @@ pub fn repeat(stream: &mut RollbackableTokenStream) -> ParseResult {
         Some(&(_, TokenKind::Number(num))) => {
             *stream = cloned_stream;
             Some(Ok(Instruction::Repeat(inside, num)))
-        },
+        }
         Some((token_at, token)) => Some(Err(format!("Unexpected token {} at {}", token, token_at))),
-        None => Some(Err("Unexpected EOF".to_string()))
+        None => Some(Err("Unexpected EOF".to_string())),
     }
 }

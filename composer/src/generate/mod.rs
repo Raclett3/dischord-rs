@@ -37,12 +37,7 @@ fn partial_max<T: Copy + PartialOrd>(a: T, b: T) -> T {
     }
 }
 
-pub fn parse_note<'a>(
-    length: f64,
-    pitch: isize,
-    state: &TrackState<'a>,
-    notes: &mut Vec<Note>,
-) {
+pub fn parse_note<'a>(length: f64, pitch: isize, state: &TrackState<'a>, notes: &mut Vec<Note>) {
     let (attack, decay, sustain, release) = state.envelope;
     let (unison_count, detune) = state.detune;
     let mut frequency = 220.0 * (2.0f64).powf((state.octave * 12 + pitch) as f64 / 12.0);
@@ -166,19 +161,15 @@ pub fn parse_instruction<'a>(
                 Tone::FnTone(state.fn_tones[0])
             };
             /*state.tone = state
-                .pcm_tones
-                .get(*pcm)
-                .map(|x| Tone::PCMTone(x.as_slice()))
-                .unwrap_or(Tone::FnTone(state.fn_tones[0]));*/
+            .pcm_tones
+            .get(*pcm)
+            .map(|x| Tone::PCMTone(x.as_slice()))
+            .unwrap_or(Tone::FnTone(state.fn_tones[0]));*/
         }
     }
 }
 
-pub fn parse_track<'a>(
-    track: &[Instruction],
-    state: &mut TrackState<'a>,
-    notes: &mut Vec<Note>,
-) {
+pub fn parse_track<'a>(track: &[Instruction], state: &mut TrackState<'a>, notes: &mut Vec<Note>) {
     for inst in track {
         parse_instruction(inst, state, notes);
     }
