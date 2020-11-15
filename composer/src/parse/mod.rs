@@ -171,7 +171,7 @@ pub fn parse_stream(
             None => {
                 stream.rollback();
                 let (token_at, token) = stream.next().unwrap();
-                return Err(format!("Unexpected token {} at {}", token_at, token));
+                return Err(format!("Unexpected token {} at {}", token, token_at));
             }
             Some(Err(x)) => return Err(x),
             Some(Ok(x)) => track.push(x),
