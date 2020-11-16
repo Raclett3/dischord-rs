@@ -1,5 +1,4 @@
-use crate::parse::{Instruction, ParseResult, RollbackableTokenStream};
-use crate::tokenize::TokenKind;
+use crate::parse::{Instruction, ParseError, ParseResult, RollbackableTokenStream};
 
 fn hex_to_num(hex: u8) -> Option<usize> {
     if b'0' <= hex && hex <= b'9' {
@@ -12,71 +11,55 @@ fn hex_to_num(hex: u8) -> Option<usize> {
 }
 
 pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
-    if !stream.expect_character('@') {
-        return None;
+    if stream.expect_character('@').is_err() {
+        return Ok(None);
     }
 
-    match stream.next() {
-        Some(&(_, TokenKind::Number(num))) => Some(Ok(Instruction::Tone(num))),
-        Some((token_at, TokenKind::Character('d'))) => {
+    if let Ok((_, number)) = stream.take_number() {
+        return Ok(Some(Instruction::Tone(number)));
+    }
+
+    let (inst_at, inst) = stream.take_character()?;
+
+    match inst {
+        'd' => {
+            let token_at = stream.cursor();
             let params = stream.comma_separated_numbers();
             if params.len() != 2 {
-                let err = format!("Wrong number of parameters at {}", token_at);
-                return Some(Err(err));
+                return Err(ParseError::WrongParamsNumber(token_at, 2, params.len()));
             }
-            Some(Ok(Instruction::Detune(
+            Ok(Some(Instruction::Detune(
                 params[0],
                 params[1] as f64 / 10000.0,
             )))
         }
-        Some((token_at, TokenKind::Character('e'))) => {
+        'e' => {
+            let token_at = stream.cursor();
             let params = stream.comma_separated_numbers();
             if params.len() != 4 {
-                let err = format!("Wrong number of parameters at {}", token_at);
-                return Some(Err(err));
+                return Err(ParseError::WrongParamsNumber(token_at, 4, params.len()));
             }
             let params: Vec<_> = params.iter().map(|&x| x as f64 / 100.0).collect();
             let envelope = Instruction::Envelope(params[0], params[1], params[2], params[3]);
-            Some(Ok(envelope))
+            Ok(Some(envelope))
         }
-        Some((_, TokenKind::Character('h'))) => {
-            let pcm = match stream.next() {
-                Some((_, TokenKind::BraceString(string))) => string
-                    .bytes()
-                    .map(|byte| {
-                        hex_to_num(byte)
-                            .map(|x| (x as f64 - 8.0) / 8.0)
-                            .unwrap_or(0.0)
-                    })
-                    .collect(),
-                Some((token_at, token)) => {
-                    return Some(Err(format!("Unexpected token {} at {}", token, token_at)));
-                }
-                None => return Some(Err("Unexpected EOF after the token @h".to_string())),
-            };
-            Some(Ok(Instruction::DefinePCMTone(pcm)))
+        'h' => {
+            let (_, string) = stream.take_brace_string()?;
+            let pcm = string
+                .bytes()
+                .map(|byte| {
+                    hex_to_num(byte)
+                        .map(|x| (x as f64 - 8.0) / 8.0)
+                        .unwrap_or(0.0)
+                })
+                .collect();
+            Ok(Some(Instruction::DefinePCMTone(pcm)))
         }
-        Some((_, TokenKind::Character('p'))) => {
-            let num = match stream.next() {
-                Some((_, TokenKind::Number(num))) => *num,
-                Some((token_at, token)) => {
-                    return Some(Err(format!("Unexpected token {} at {}", token, token_at)));
-                }
-                None => return Some(Err("Unexpected EOF after the token @p".to_string())),
-            };
-            Some(Ok(Instruction::PCMTone(num)))
+        'p' => Ok(Some(Instruction::PCMTone(stream.take_number()?.1))),
+        'g' => {
+            let (_, gate) = stream.take_number()?;
+            Ok(Some(Instruction::Gate(gate as f64 / 1000.0)))
         }
-        Some((_, TokenKind::Character('g'))) => {
-            let gate = match stream.next() {
-                Some((_, TokenKind::Number(x))) => *x,
-                Some((token_at, token)) => {
-                    return Some(Err(format!("Unexpected token {} at {}", token, token_at)));
-                }
-                None => return Some(Err("Unexpected EOF after the token @p".to_string())),
-            };
-            Some(Ok(Instruction::Gate(gate as f64 / 1000.0)))
-        }
-        Some((token_at, token)) => Some(Err(format!("Unexpected token {} at {}", token, token_at))),
-        None => Some(Err("Unexpected EOF after the token @".to_string())),
+        _ => Err(ParseError::unexpected_char(inst_at, inst)),
     }
 }

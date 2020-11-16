@@ -41,7 +41,7 @@ Ln デフォルトの音符の長さを変更します。
 
 fn to_riff(mml: &str) -> Result<Vec<u8>, String> {
     let tokens = tokenize(&mml)?;
-    let parsed = parse(&tokens)?;
+    let parsed = parse(&tokens).map_err(|x| x.to_string())?;
     Ok(Generator::new(48000.0, &parsed).into_riff())
 }
 

@@ -1,5 +1,6 @@
-use crate::parse::{Instruction, NoteLength, ParseResult, RollbackableTokenStream};
+use crate::parse::{Instruction, NoteLength, ParseError, ParseResult, RollbackableTokenStream};
 use crate::tokenize::TokenKind;
+use crate::try_or_ok_none;
 
 pub fn parse_length(stream: &mut RollbackableTokenStream) -> Vec<NoteLength> {
     let mut length = vec![];
@@ -26,23 +27,23 @@ pub fn parse_length(stream: &mut RollbackableTokenStream) -> Vec<NoteLength> {
 }
 
 pub fn rest(stream: &mut RollbackableTokenStream) -> ParseResult {
-    if !stream.expect_character('r') {
-        return None;
+    if stream.expect_character('r').is_err() {
+        return Ok(None);
     }
 
     let length = parse_length(stream);
 
-    Some(Ok(Instruction::Rest(length)))
+    Ok(Some(Instruction::Rest(length)))
 }
 
 pub fn length(stream: &mut RollbackableTokenStream) -> ParseResult {
-    if !stream.expect_character('l') {
-        return None;
+    if stream.expect_character('l').is_err() {
+        return Ok(None);
     }
 
     let length = parse_length(stream);
 
-    Some(Ok(Instruction::Length(length)))
+    Ok(Some(Instruction::Length(length)))
 }
 
 fn character_to_pitch(character: char) -> Option<isize> {
@@ -59,25 +60,24 @@ fn character_to_pitch(character: char) -> Option<isize> {
 }
 
 pub fn chord(stream: &mut RollbackableTokenStream) -> ParseResult {
-    if !stream.expect_character('(') {
-        return None;
+    if stream.expect_character('(').is_err() {
+        return Ok(None);
     }
 
     let mut notes = Vec::new();
     let mut octave = 0;
 
     loop {
-        match stream.take_character() {
-            Some((_, ')')) => break,
-            Some((_, '<')) => octave += 1,
-            Some((_, '>')) => octave -= 1,
-            None => return Some(Err("Unexpected EOF after (".to_string())),
-            Some((token_at, x)) => {
+        match stream.take_character()? {
+            (_, ')') => break,
+            (_, '<') => octave += 1,
+            (_, '>') => octave -= 1,
+            (token_at, x) => {
                 if let Some(mut pitch) = character_to_pitch(x) {
                     loop {
-                        if stream.expect_character('+') {
+                        if stream.expect_character('+').is_ok() {
                             pitch += 1;
-                        } else if stream.expect_character('-') {
+                        } else if stream.expect_character('-').is_ok() {
                             pitch -= 1;
                         } else {
                             break;
@@ -85,7 +85,7 @@ pub fn chord(stream: &mut RollbackableTokenStream) -> ParseResult {
                     }
                     notes.push(pitch + octave * 12);
                 } else {
-                    return Some(Err(format!("Unexpected token {} at {}", x, token_at)));
+                    return Err(ParseError::unexpected_char(token_at, x));
                 }
             }
         }
@@ -93,12 +93,16 @@ pub fn chord(stream: &mut RollbackableTokenStream) -> ParseResult {
 
     let length = parse_length(stream);
 
-    Some(Ok(Instruction::Chord(notes, length)))
+    Ok(Some(Instruction::Chord(notes, length)))
 }
 
 pub fn note(stream: &mut RollbackableTokenStream) -> ParseResult {
-    let (_, character) = stream.take_character()?;
-    let mut pitch = character_to_pitch(character)?;
+    let (_, character) = try_or_ok_none!(stream.take_character());
+    let mut pitch = if let Some(pitch) = character_to_pitch(character) {
+        pitch
+    } else {
+        return Ok(None);
+    };
 
     loop {
         match stream.peek() {
@@ -112,5 +116,5 @@ pub fn note(stream: &mut RollbackableTokenStream) -> ParseResult {
 
     let length = parse_length(stream);
 
-    Some(Ok(Instruction::Note(pitch, length)))
+    Ok(Some(Instruction::Note(pitch, length)))
 }

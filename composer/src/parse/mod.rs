@@ -6,6 +6,18 @@ pub mod tone;
 pub mod volume;
 
 use crate::tokenize::{Token, TokenKind};
+use std::fmt;
+
+#[macro_export]
+macro_rules! try_or_ok_none {
+    ($option:expr) => {
+        if let Ok(ok) = $option {
+            ok
+        } else {
+            return Ok(None);
+        }
+    };
+}
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum NoteLength {
@@ -35,7 +47,36 @@ pub enum Instruction {
 pub type Track = Vec<Instruction>;
 pub type ParsedMML = Vec<Track>;
 
-type ParseResult = Option<Result<Instruction, String>>;
+type ParseResult = Result<Option<Instruction>, ParseError>;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ParseError {
+    UnexpectedToken(Token),
+    WrongParamsNumber(usize, usize, usize), // Params at, expected, provided
+    UnexpectedEOF,
+}
+
+impl ParseError {
+    fn unexpected_char(position: usize, ch: char) -> Self {
+        Self::UnexpectedToken((position, TokenKind::Character(ch)))
+    }
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ParseError::UnexpectedToken((token_at, token)) => {
+                write!(f, "Unexpected token {} at {}", token, token_at)
+            }
+            ParseError::WrongParamsNumber(params_at, expected, provided) => write!(
+                f,
+                "{} parameter(s) are provided at {}, expected {} parameter(s)",
+                provided, params_at, expected
+            ),
+            ParseError::UnexpectedEOF => write!(f, "Unexpected EOF"),
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct RollbackableTokenStream<'a> {
@@ -71,32 +112,45 @@ impl<'a> RollbackableTokenStream<'a> {
         self.cursor >= self.tokens.len()
     }
 
-    pub fn take_number(&mut self) -> Option<(usize, usize)> {
+    pub fn take_number(&mut self) -> Result<(usize, usize), ParseError> {
         match self.peek() {
             Some(&(token_at, TokenKind::Number(num))) => {
                 self.next();
-                Some((token_at, num))
+                Ok((token_at, num))
             }
-            _ => None,
+            Some(x) => Err(ParseError::UnexpectedToken(x.clone())),
+            _ => Err(ParseError::UnexpectedEOF),
         }
     }
 
-    pub fn take_character(&mut self) -> Option<(usize, char)> {
+    pub fn take_character(&mut self) -> Result<(usize, char), ParseError> {
         match self.peek() {
             Some(&(token_at, TokenKind::Character(ch))) => {
                 self.next();
-                Some((token_at, ch))
+                Ok((token_at, ch))
             }
-            _ => None,
+            Some(x) => Err(ParseError::UnexpectedToken(x.clone())),
+            _ => Err(ParseError::UnexpectedEOF),
+        }
+    }
+
+    pub fn take_brace_string(&mut self) -> Result<(usize, &'a str), ParseError> {
+        match self.peek() {
+            Some((token_at, TokenKind::BraceString(string))) => {
+                self.next();
+                Ok((*token_at, string))
+            }
+            Some(x) => Err(ParseError::UnexpectedToken(x.clone())),
+            _ => Err(ParseError::UnexpectedEOF),
         }
     }
 
     pub fn comma_separated_numbers(&mut self) -> Vec<usize> {
         let mut numbers = vec![];
 
-        while let Some((_, number)) = self.take_number() {
+        while let Ok((_, number)) = self.take_number() {
             numbers.push(number);
-            if !self.expect_character(',') {
+            if self.expect_character(',').is_err() {
                 break;
             }
         }
@@ -104,16 +158,19 @@ impl<'a> RollbackableTokenStream<'a> {
         numbers
     }
 
-    pub fn expect_character(&mut self, ch_a: char) -> bool {
+    pub fn expect_character(&mut self, ch_a: char) -> Result<(), ParseError> {
         match self.peek() {
-            Some(&(_, TokenKind::Character(ch_b))) => {
-                if ch_a == ch_b {
-                    self.next();
-                }
-                ch_a == ch_b
+            Some(&(_, TokenKind::Character(ch_b))) if ch_a == ch_b => {
+                self.next();
+                Ok(())
             }
-            _ => false,
+            Some(x) => Err(ParseError::UnexpectedToken(x.clone())),
+            None => Err(ParseError::UnexpectedEOF),
         }
+    }
+
+    pub fn cursor(&self) -> usize {
+        self.cursor
     }
 
     pub fn new(tokens: &'a [Token]) -> Self {
@@ -126,14 +183,15 @@ pub type Parser = fn(&mut RollbackableTokenStream) -> ParseResult;
 pub fn parse_stream(
     stream: &mut RollbackableTokenStream,
     inside_bracket: bool,
-) -> Result<ParsedMML, String> {
+) -> Result<ParsedMML, ParseError> {
     let mut parsed = Vec::new();
     let mut track = Vec::new();
 
-    while !stream.empty() {
-        if stream.expect_character(';') {
+    'main_loop: while !stream.empty() {
+        if let Some(&(token_at, TokenKind::Character(';'))) = stream.peek() {
+            stream.next();
             if inside_bracket {
-                return Err("Unexpected token ;".to_string());
+                return Err(ParseError::unexpected_char(token_at, ';'));
             }
             stream.accept();
             parsed.push(track);
@@ -141,12 +199,13 @@ pub fn parse_stream(
             continue;
         }
 
-        if stream.expect_character(']') {
+        if let Some(&(token_at, TokenKind::Character(']'))) = stream.peek() {
+            stream.next();
             if inside_bracket {
                 stream.accept();
                 return Ok(vec![track]);
             } else {
-                return Err("Unexpected token ]".to_string());
+                return Err(ParseError::unexpected_char(token_at, ']'));
             }
         }
 
@@ -161,30 +220,22 @@ pub fn parse_stream(
             volume::volume,
             repeat::repeat,
         ];
-        let result = parsers
-            .iter()
-            .map(|parser: &Parser| {
-                stream.rollback();
-                parser(stream)
-            })
-            .flatten()
-            .next();
 
-        match result {
-            None => {
-                stream.rollback();
-                let (token_at, token) = stream.next().unwrap();
-                return Err(format!("Unexpected token {} at {}", token, token_at));
+        for &parser in &parsers {
+            stream.rollback();
+            if let Some(x) = parser(stream)? {
+                track.push(x);
+                stream.accept();
+                continue 'main_loop;
             }
-            Some(Err(x)) => return Err(x),
-            Some(Ok(x)) => track.push(x),
         }
-
-        stream.accept();
+        stream.rollback();
+        let token = stream.next().unwrap();
+        return Err(ParseError::UnexpectedToken(token.clone()));
     }
 
     if inside_bracket {
-        return Err("Unexpected EOF".to_string());
+        return Err(ParseError::UnexpectedEOF);
     }
 
     if !track.is_empty() {
@@ -194,7 +245,7 @@ pub fn parse_stream(
     Ok(parsed)
 }
 
-pub fn parse(tokens: &[Token]) -> Result<ParsedMML, String> {
+pub fn parse(tokens: &[Token]) -> Result<ParsedMML, ParseError> {
     let mut stream = RollbackableTokenStream::new(tokens);
     parse_stream(&mut stream, false)
 }
