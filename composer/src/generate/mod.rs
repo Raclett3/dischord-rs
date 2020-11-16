@@ -40,7 +40,7 @@ fn partial_max<T: Copy + PartialOrd>(a: T, b: T) -> T {
 pub fn parse_note<'a>(length: f64, pitch: isize, state: &TrackState<'a>, notes: &mut Vec<Note>) {
     let (attack, decay, sustain, release) = state.envelope;
     let (unison_count, detune) = state.detune;
-    let mut frequency = 220.0 * (2.0f64).powf((state.octave * 12 + pitch) as f64 / 12.0);
+    let mut frequency = 220.0 * (2.0f64).powf((state.octave * 12 + pitch) as f64 / 12.0) * state.tune;
     let length = partial_max(length - state.gate, 0.0);
 
     for _ in 0..unison_count {
@@ -97,7 +97,7 @@ pub fn parse_note<'a>(length: f64, pitch: isize, state: &TrackState<'a>, notes: 
                 sustain_volume
             };
 
-            let release_len = release * init_volume / sustain_volume;
+            let release_len = release;
             let note = Note::new(
                 frequency,
                 state.tone.clone(),
@@ -163,6 +163,7 @@ pub fn parse_instruction<'a>(
             };
         }
         Instruction::Gate(gate) => state.gate = *gate,
+        Instruction::Tune(tune) => state.tune = *tune,
     }
 }
 
@@ -202,6 +203,7 @@ pub struct TrackState<'a> {
     detune: (usize, f64),
     envelope: (f64, f64, f64, f64),
     gate: f64,
+    tune: f64,
     pcm_tones: Vec<Arc<Vec<f64>>>,
 }
 
@@ -218,6 +220,7 @@ impl<'a> TrackState<'a> {
             detune: (1, 0.0),
             envelope: (0.0, 0.0, 1.0, 0.0),
             gate: 0.001,
+            tune: 1.0,
             pcm_tones,
         }
     }

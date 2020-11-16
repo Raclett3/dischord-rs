@@ -42,6 +42,7 @@ pub enum Instruction {
     Envelope(f64, f64, f64, f64),
     Repeat(Track, usize),
     Length(Vec<NoteLength>),
+    Tune(f64),
 }
 
 pub type Track = Vec<Instruction>;

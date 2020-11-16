@@ -60,6 +60,10 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
             let (_, gate) = stream.take_number()?;
             Ok(Some(Instruction::Gate(gate as f64 / 1000.0)))
         }
+        't' => {
+            let (_, tune) = stream.take_number()?;
+            Ok(Some(Instruction::Tune(tune as f64 / 1000.0)))
+        }
         _ => Err(ParseError::unexpected_char(inst_at, inst)),
     }
 }
