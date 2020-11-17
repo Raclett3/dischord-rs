@@ -5,16 +5,16 @@ use crate::parse::{Instruction, NoteLength, Track};
 use note::{Note, NotesQueue};
 use std::sync::Arc;
 
-pub type FnTone = fn(f64, f64) -> f64;
+pub type FnTone = fn(f32, f32) -> f32;
 
-pub fn note_length_to_float(length: &[NoteLength], default: f64) -> f64 {
+pub fn note_length_to_float(length: &[NoteLength], default: f32) -> f32 {
     length
         .iter()
         .scan(0.0, |last, x| {
             *last = match x {
                 NoteLength::DefaultLength => default,
                 NoteLength::Dot => *last / 2.0,
-                NoteLength::Length(l) => 1.0 / (*l as f64),
+                NoteLength::Length(l) => 1.0 / (*l as f32),
             };
             Some(*last)
         })
@@ -37,10 +37,10 @@ fn partial_max<T: Copy + PartialOrd>(a: T, b: T) -> T {
     }
 }
 
-pub fn parse_note<'a>(length: f64, pitch: isize, state: &TrackState<'a>, notes: &mut Vec<Note>) {
+pub fn parse_note<'a>(length: f32, pitch: isize, state: &TrackState<'a>, notes: &mut Vec<Note>) {
     let (attack, decay, sustain, release) = state.envelope;
     let (unison_count, detune) = state.detune;
-    let mut frequency = 220.0 * (2.0f64).powf((state.octave * 12 + pitch) as f64 / 12.0) * state.tune;
+    let mut frequency = 220.0 * (2.0f32).powf((state.octave * 12 + pitch) as f32 / 12.0) * state.tune;
     let length = partial_max(length - state.gate, 0.0);
 
     for _ in 0..unison_count {
@@ -121,8 +121,8 @@ pub fn parse_instruction<'a>(
 ) {
     match inst {
         Instruction::Octave(octave) => state.octave += octave,
-        Instruction::Tempo(tempo) => state.tempo = *tempo as f64,
-        Instruction::Volume(volume) => state.volume = *volume as f64,
+        Instruction::Tempo(tempo) => state.tempo = *tempo as f32,
+        Instruction::Volume(volume) => state.volume = *volume as f32,
         Instruction::Tone(tone) => {
             state.tone = Tone::FnTone(*state.fn_tones.get(*tone).unwrap_or(&state.fn_tones[0]))
         }
@@ -176,15 +176,15 @@ pub fn parse_track<'a>(track: &[Instruction], state: &mut TrackState<'a>, notes:
 #[derive(Debug, PartialEq, Clone)]
 pub enum Tone {
     FnTone(FnTone),
-    PCMTone(Arc<Vec<f64>>),
+    PCMTone(Arc<Vec<f32>>),
 }
 
 impl Tone {
-    pub fn sample(&self, frequency: f64, position: f64) -> f64 {
+    pub fn sample(&self, frequency: f32, position: f32) -> f32 {
         match self {
             Tone::FnTone(tone) => tone(frequency, position),
             Tone::PCMTone(tone) => {
-                let len = tone.len() as f64;
+                let len = tone.len() as f32;
                 let index = ((frequency * position * len) % len) as usize;
                 tone[index]
             }
@@ -193,22 +193,22 @@ impl Tone {
 }
 
 pub struct TrackState<'a> {
-    position: f64,
-    tempo: f64,
-    default_length: f64,
-    volume: f64,
+    position: f32,
+    tempo: f32,
+    default_length: f32,
+    volume: f32,
     tone: Tone,
     fn_tones: &'a [FnTone],
     octave: isize,
-    detune: (usize, f64),
-    envelope: (f64, f64, f64, f64),
-    gate: f64,
-    tune: f64,
-    pcm_tones: Vec<Arc<Vec<f64>>>,
+    detune: (usize, f32),
+    envelope: (f32, f32, f32, f32),
+    gate: f32,
+    tune: f32,
+    pcm_tones: Vec<Arc<Vec<f32>>>,
 }
 
 impl<'a> TrackState<'a> {
-    pub fn new(fn_tones: &'a [FnTone], pcm_tones: Vec<Arc<Vec<f64>>>) -> Self {
+    pub fn new(fn_tones: &'a [FnTone], pcm_tones: Vec<Arc<Vec<f32>>>) -> Self {
         Self {
             position: 0.0,
             tempo: 120.0,
@@ -240,11 +240,11 @@ fn u32_to_bytes(value: u32) -> impl Iterator<Item = u8> {
 
 #[derive(Debug)]
 pub struct Generator {
-    sample_rate: f64,
-    position: f64,
+    sample_rate: f32,
+    position: f32,
     notes_queue: NotesQueue,
     ringing_notes: Vec<Note>,
-    track_length: f64,
+    track_length: f32,
 }
 
 static TONES: &[FnTone] = &[
@@ -258,7 +258,7 @@ static TONES: &[FnTone] = &[
 ];
 
 impl Generator {
-    pub fn new(sample_rate: f64, tracks: &[Track]) -> Self {
+    pub fn new(sample_rate: f32, tracks: &[Track]) -> Self {
         let mut notes = Vec::new();
         let mut tempo = 120.0;
         let mut pcm_tones = Vec::new();
@@ -288,7 +288,7 @@ impl Generator {
         self.ringing_notes.is_empty() && self.notes_queue.is_empty()
     }
 
-    pub fn track_length(&self) -> f64 {
+    pub fn track_length(&self) -> f32 {
         self.track_length
     }
 
@@ -331,7 +331,7 @@ impl Generator {
 }
 
 impl Iterator for Generator {
-    type Item = f64;
+    type Item = f32;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.is_over() {

@@ -2,29 +2,29 @@ use crate::generate::Tone;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Note {
-    frequency: f64,
+    frequency: f32,
     tone: Tone,
-    volume_from: f64,
-    volume_to: f64,
-    offset: f64,
-    start_at: f64,
-    end_at: f64,
+    volume_from: f32,
+    volume_to: f32,
+    offset: f32,
+    start_at: f32,
+    end_at: f32,
 }
 
 impl Note {
-    pub fn is_over(&self, position: f64) -> bool {
+    pub fn is_over(&self, position: f32) -> bool {
         self.end_at <= position
     }
 
-    pub fn is_waiting(&self, position: f64) -> bool {
+    pub fn is_waiting(&self, position: f32) -> bool {
         position < self.start_at
     }
 
-    pub fn is_ringing(&self, position: f64) -> bool {
+    pub fn is_ringing(&self, position: f32) -> bool {
         !self.is_over(position) && !self.is_waiting(position)
     }
 
-    pub fn get_sample(&self, position: f64) -> f64 {
+    pub fn get_sample(&self, position: f32) -> f32 {
         if !self.is_ringing(position) {
             return 0.0;
         }
@@ -37,18 +37,18 @@ impl Note {
             * volume
     }
 
-    pub fn end_at(&self) -> f64 {
+    pub fn end_at(&self) -> f32 {
         self.end_at
     }
 
     pub fn new(
-        frequency: f64,
+        frequency: f32,
         tone: Tone,
-        volume_from: f64,
-        volume_to: f64,
-        offset: f64,
-        start_at: f64,
-        end_at: f64,
+        volume_from: f32,
+        volume_to: f32,
+        offset: f32,
+        start_at: f32,
+        end_at: f32,
     ) -> Self {
         Self {
             frequency,
@@ -77,7 +77,7 @@ impl NotesQueue {
         NotesQueue { notes }
     }
 
-    pub fn next_before(&mut self, before: f64) -> Option<Note> {
+    pub fn next_before(&mut self, before: f32) -> Option<Note> {
         if self.notes.last()?.is_waiting(before) {
             return None;
         }

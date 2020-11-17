@@ -30,7 +30,7 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
             }
             Ok(Some(Instruction::Detune(
                 params[0],
-                params[1] as f64 / 10000.0,
+                params[1] as f32 / 10000.0,
             )))
         }
         'e' => {
@@ -39,7 +39,7 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
             if params.len() != 4 {
                 return Err(ParseError::WrongParamsNumber(token_at, 4, params.len()));
             }
-            let params: Vec<_> = params.iter().map(|&x| x as f64 / 100.0).collect();
+            let params: Vec<_> = params.iter().map(|&x| x as f32 / 100.0).collect();
             let envelope = Instruction::Envelope(params[0], params[1], params[2], params[3]);
             Ok(Some(envelope))
         }
@@ -49,7 +49,7 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
                 .bytes()
                 .map(|byte| {
                     hex_to_num(byte)
-                        .map(|x| (x as f64 - 8.0) / 8.0)
+                        .map(|x| (x as f32 - 8.0) / 8.0)
                         .unwrap_or(0.0)
                 })
                 .collect();
@@ -58,11 +58,11 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
         'p' => Ok(Some(Instruction::PCMTone(stream.take_number()?.1))),
         'g' => {
             let (_, gate) = stream.take_number()?;
-            Ok(Some(Instruction::Gate(gate as f64 / 1000.0)))
+            Ok(Some(Instruction::Gate(gate as f32 / 1000.0)))
         }
         't' => {
             let (_, tune) = stream.take_number()?;
-            Ok(Some(Instruction::Tune(tune as f64 / 1000.0)))
+            Ok(Some(Instruction::Tune(tune as f32 / 1000.0)))
         }
         _ => Err(ParseError::unexpected_char(inst_at, inst)),
     }

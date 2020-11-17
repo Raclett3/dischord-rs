@@ -6,5 +6,5 @@ pub fn volume(stream: &mut RollbackableTokenStream) -> ParseResult {
     }
 
     let (_, volume) = stream.take_number()?;
-    Ok(Some(Instruction::Volume(volume as f64 / 100.0)))
+    Ok(Some(Instruction::Volume(volume as f32 / 100.0)))
 }

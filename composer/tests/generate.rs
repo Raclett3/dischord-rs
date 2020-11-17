@@ -1,7 +1,7 @@
 use composer::*;
 
-fn assert_float_eq(a: f64, b: f64) {
-    if (a - b).abs() > 1e-8 {
+fn assert_float_eq(a: f32, b: f32) {
+    if (a - b).abs() > 1e-5 {
         panic!(
             "assertion failed: `(left == right)`\n  left: `{}`,\n right: `{}`",
             a, b
@@ -20,7 +20,7 @@ fn test_note_length_to_float() {
     );
 }
 
-fn pulse(frequency: f64, position: f64) -> f64 {
+fn pulse(frequency: f32, position: f32) -> f32 {
     if frequency * position % 1.0 >= 0.5 {
         1.0
     } else {
@@ -40,20 +40,20 @@ fn test_note() {
     assert_float_eq(note.get_sample(0.5), 0.0);
     assert_float_eq(note.get_sample(2.0), 0.0);
     for i in 0..100 {
-        let position = i as f64 / 100.0;
+        let position = i as f32 / 100.0;
         assert_float_eq(note.get_sample(position + 1.0), 1.0 - position);
     }
 
     let note = Note::new(10.0, FnTone(pulse), 1.0, 1.0, 0.0, 0.0, 1.0);
     for i in 0..10 {
-        let position = i as f64 / 10.0;
+        let position = i as f32 / 10.0;
         assert_float_eq(note.get_sample(position + 0.025), -1.0);
         assert_float_eq(note.get_sample(position + 0.075), 1.0);
     }
 
     let note = Note::new(10.0, FnTone(pulse), 1.0, 1.0, 0.05, 0.0, 1.0);
     for i in 0..10 {
-        let position = i as f64 / 10.0;
+        let position = i as f32 / 10.0;
         assert_float_eq(note.get_sample(position + 0.025), 1.0);
         assert_float_eq(note.get_sample(position + 0.075), -1.0);
     }

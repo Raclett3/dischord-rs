@@ -33,16 +33,16 @@ pub enum Instruction {
     Rest(Vec<NoteLength>),
     Octave(isize),
     Tempo(usize),
-    Volume(f64),
-    Gate(f64),
+    Volume(f32),
+    Gate(f32),
     Tone(usize),
-    DefinePCMTone(Vec<f64>),
+    DefinePCMTone(Vec<f32>),
     PCMTone(usize),
-    Detune(usize, f64),
-    Envelope(f64, f64, f64, f64),
+    Detune(usize, f32),
+    Envelope(f32, f32, f32, f32),
     Repeat(Track, usize),
     Length(Vec<NoteLength>),
-    Tune(f64),
+    Tune(f32),
 }
 
 pub type Track = Vec<Instruction>;

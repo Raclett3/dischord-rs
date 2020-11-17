@@ -52,7 +52,7 @@ fn play<T: cpal::Sample>(
     let channels = config.channels as usize;
 
     println!("generating...");
-    let mut generator = Generator::new(sample_rate as f64, tracks);
+    let mut generator = Generator::new(sample_rate, tracks);
     println!("generated! length: {:.2}s", generator.track_length());
     let is_over = Arc::new(AtomicBool::new(false));
     let is_over_cloned = is_over.clone();
@@ -84,7 +84,7 @@ fn write_samples<T: cpal::Sample>(
         let sample = generator.next().unwrap_or_else(|| {
             is_over.store(true, SeqCst);
             0.0
-        }) as f32;
+        });
         let value: T = cpal::Sample::from(&sample);
         for sample in frame.iter_mut() {
             *sample = value;
