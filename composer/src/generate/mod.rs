@@ -292,6 +292,10 @@ impl Generator {
         self.track_length
     }
 
+    pub fn into_i16_stream(self) -> impl Iterator<Item=i16> {
+        self.map(|sample| (sample * 32767.0) as i16)
+    }
+
     pub fn into_riff(self) -> Vec<u8> {
         let sample_rate = self.sample_rate as u32;
         let channels = 1;
@@ -315,7 +319,7 @@ impl Generator {
             .chain(u16_to_bytes(bits_per_sample))
             .chain(b"data".iter().copied())
             .chain(u32_to_bytes(0)) // Data Size: Overwrite later
-            .chain(self.flat_map(|sample| i16_to_bytes((sample * 32767.0) as i16)))
+            .chain(self.into_i16_stream().flat_map(i16_to_bytes))
             .collect();
 
         for (i, byte) in (4..=7).zip(u32_to_bytes(riff.len() as u32)) {

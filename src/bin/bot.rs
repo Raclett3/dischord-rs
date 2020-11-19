@@ -1,6 +1,7 @@
 use composer::generate::Generator;
 use composer::parse::parse;
 use composer::tokenize::tokenize;
+use lame::Lame;
 use serenity::{
     async_trait,
     framework::standard::{
@@ -17,6 +18,7 @@ static MANUAL: &str = "```
 Dischord
 dc!help Dischordのヘルプを表示
 dc!play [MML] MMLを音声ファイルに書き出し
+dc!playraw [MML] MMLを圧縮されていない音声ファイルに書き出し
 
 Dischord MML 文法
 以下の文字列を連ねて記述します。小文字のアルファベット部分はパラメータとして整数を入れます。
@@ -46,6 +48,24 @@ fn to_riff(mml: &str) -> Result<Vec<u8>, String> {
     Ok(Generator::new(44100.0, &parsed).into_riff())
 }
 
+fn to_i16_samples(mml: &str) -> Result<Vec<i16>, String> {
+    let tokens = tokenize(&mml)?;
+    let parsed = parse(&tokens).map_err(|x| x.to_string())?;
+    Ok(Generator::new(44100.0, &parsed).into_i16_stream().collect())
+}
+
+fn to_mp3(samples: &[i16]) -> Option<Vec<u8>> {
+    let mut lame = Lame::init().ok()?;
+
+    lame.set_quality(3).ok()?;
+    lame.set_kilobitrate(160).ok()?;
+    lame.set_channels(1).ok()?;
+    lame.set_samplerate(44100).ok()?;
+
+    let mp3 = lame.encode_mono(&samples).ok()?;
+    Some(mp3)
+}
+
 #[command]
 async fn help(ctx: &Context, msg: &Message) -> CommandResult {
     msg.channel_id.say(&ctx.http, MANUAL).await?;
@@ -53,7 +73,7 @@ async fn help(ctx: &Context, msg: &Message) -> CommandResult {
 }
 
 #[command]
-async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+async fn playraw(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     msg.channel_id.say(&ctx.http, "生成しています...").await?;
 
     let mml = args.rest();
@@ -67,6 +87,29 @@ async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     let files = vec![(riff.as_slice(), "result.wav")];
     msg.channel_id.send_files(&ctx.http, files, |x| x).await?;
+    Ok(())
+}
+
+#[command]
+async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    msg.channel_id.say(&ctx.http, "生成しています...").await?;
+
+    let mml = args.rest();
+    let samples = match to_i16_samples(mml) {
+        Ok(riff) => riff,
+        Err(err) => {
+            msg.channel_id.say(&ctx.http, &err).await?;
+            return Ok(());
+        }
+    };
+
+    if let Some(mp3) = to_mp3(&samples) {
+        let files = vec![(mp3.as_slice(), "result.mp3")];
+        msg.channel_id.send_files(&ctx.http, files, |x| x).await?;
+    } else {
+        msg.channel_id.say(&ctx.http, "予期せぬエラーが発生しました。").await?;
+    }
+
     Ok(())
 }
 
@@ -85,7 +128,7 @@ impl EventHandler for Handler {
 }
 
 #[group]
-#[commands(help, play)]
+#[commands(help, play, playraw)]
 struct Commands;
 
 #[tokio::main]
