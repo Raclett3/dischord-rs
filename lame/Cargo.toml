@@ -1,0 +1,6 @@
+[package]
+name = "lame"
+version = "0.1.0"
+authors = ["Raclett3 <im@s283.net>"]
+edition = "2018"
+

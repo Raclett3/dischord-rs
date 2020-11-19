@@ -413,6 +413,7 @@ version = "0.1.0"
 dependencies = [
  "composer 0.1.0",
  "cpal 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lame 0.1.0",
  "serenity 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.2.22 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -814,6 +815,10 @@ dependencies = [
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "lame"
+version = "0.1.0"
 
 [[package]]
 name = "lazy_static"

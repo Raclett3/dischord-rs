@@ -5,10 +5,11 @@ authors = ["Raclett3 <im@s283.net>"]
 edition = "2018"
 
 [workspace]
-members = ["composer"]
+members = ["composer", "lame"]
 
 [dependencies]
 composer = {"path" = "./composer"}
 cpal = "0.13"
+lame = {"path" = "./lame"}
 serenity = {version = "0.9.1", default-features = false, features = ["cache", "client", "framework", "gateway", "rustls_backend", "standard_framework", "model", "voice"]}
 tokio = {version = "0.2", features = ["macros"]}
