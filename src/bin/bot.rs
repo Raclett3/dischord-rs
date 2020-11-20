@@ -57,8 +57,8 @@ fn to_i16_samples(mml: &str) -> Result<Vec<i16>, String> {
 fn to_mp3(samples: &[i16]) -> Option<Vec<u8>> {
     let mut lame = Lame::init().ok()?;
 
-    lame.set_quality(3).ok()?;
-    lame.set_kilobitrate(160).ok()?;
+    lame.set_quality(2).ok()?;
+    lame.set_kilobitrate(192).ok()?;
     lame.set_channels(1).ok()?;
     lame.set_samplerate(44100).ok()?;
 
