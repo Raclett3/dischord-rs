@@ -159,6 +159,16 @@ impl<'a> RollbackableTokenStream<'a> {
         numbers
     }
 
+    pub fn comma_separated_n_numbers(&mut self, expected: usize) -> Result<Vec<usize>, ParseError> {
+        let params_at = self.cursor();
+        let numbers = self.comma_separated_numbers();
+        if numbers.len() == expected {
+            Ok(numbers)
+        } else {
+            Err(ParseError::WrongParamsNumber(params_at, expected, numbers.len()))
+        }
+    }
+
     pub fn expect_character(&mut self, ch_a: char) -> Result<(), ParseError> {
         match self.peek() {
             Some(&(_, TokenKind::Character(ch_b))) if ch_a == ch_b => {

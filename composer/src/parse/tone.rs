@@ -23,22 +23,14 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
 
     match inst {
         'd' => {
-            let token_at = stream.cursor();
-            let params = stream.comma_separated_numbers();
-            if params.len() != 2 {
-                return Err(ParseError::WrongParamsNumber(token_at, 2, params.len()));
-            }
+            let params = stream.comma_separated_n_numbers(2)?;
             Ok(Some(Instruction::Detune(
                 params[0],
                 params[1] as f32 / 10000.0,
             )))
         }
         'e' => {
-            let token_at = stream.cursor();
-            let params = stream.comma_separated_numbers();
-            if params.len() != 4 {
-                return Err(ParseError::WrongParamsNumber(token_at, 4, params.len()));
-            }
+            let params = stream.comma_separated_n_numbers(4)?;
             let params: Vec<_> = params.iter().map(|&x| x as f32 / 100.0).collect();
             let envelope = Instruction::Envelope(params[0], params[1], params[2], params[3]);
             Ok(Some(envelope))
