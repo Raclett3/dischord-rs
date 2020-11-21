@@ -279,7 +279,7 @@ fn u32_to_bytes(value: u32) -> impl Iterator<Item = u8> {
 #[derive(Debug)]
 pub struct Generator {
     sample_rate: f32,
-    position: f32,
+    position: usize,
     notes_queues: Vec<NotesQueue>,
     effects_queues: Vec<EffectsQueue>,
     ringing_notes: Vec<Vec<Note>>,
@@ -316,7 +316,7 @@ impl Generator {
 
         Self {
             sample_rate,
-            position: 0.0,
+            position: 0,
             notes_queues,
             effects_queues,
             ringing_notes: vec![Vec::new(); tracks.len()],
@@ -326,7 +326,7 @@ impl Generator {
     }
 
     pub fn is_over(&self) -> bool {
-        self.track_length + 1.0 <= self.position
+        self.track_length + 1.0 <= self.position as f32 / self.sample_rate
     }
 
     pub fn track_length(&self) -> f32 {
@@ -384,6 +384,7 @@ impl Iterator for Generator {
         }
 
         let mut sample = 0.0;
+        let position = self.position as f32 / self.sample_rate;
 
         let zipped = self
             .effects_queues
@@ -391,7 +392,7 @@ impl Iterator for Generator {
             .zip(self.applied_effects.iter_mut());
 
         for (effects_queue, applied_effects) in zipped {
-            while let Some(note) = effects_queue.next_before(self.position) {
+            while let Some(note) = effects_queue.next_before(position) {
                 applied_effects.push(note);
             }
         }
@@ -403,12 +404,12 @@ impl Iterator for Generator {
             .zip(self.applied_effects.iter_mut());
 
         for ((notes_queue, ringing_notes), applied_effects) in zipped {
-            while let Some(note) = notes_queue.next_before(self.position) {
+            while let Some(note) = notes_queue.next_before(position) {
                 ringing_notes.push(note);
             }
             let mut cursor = 0;
             while cursor < ringing_notes.len() {
-                if ringing_notes[cursor].is_over(self.position) {
+                if ringing_notes[cursor].is_over(position) {
                     ringing_notes.remove(cursor);
                 } else {
                     cursor += 1;
@@ -416,7 +417,7 @@ impl Iterator for Generator {
             }
             let mut track_sample = 0.0;
             for note in ringing_notes {
-                track_sample += note.get_sample(self.position);
+                track_sample += note.get_sample(position);
             }
 
             for effect in applied_effects {
@@ -426,7 +427,7 @@ impl Iterator for Generator {
             sample += track_sample
         }
 
-        self.position += 1.0 / self.sample_rate;
+        self.position += 1;
 
         sample = partial_max(-1.0, partial_min(sample / 4.0, 1.0));
 
