@@ -37,10 +37,11 @@ fn partial_max<T: Copy + PartialOrd>(a: T, b: T) -> T {
     }
 }
 
-pub fn parse_note<'a>(length: f32, pitch: isize, state: &TrackState<'a>, notes: &mut Vec<Note>) {
+pub fn parse_note<'a>(length: f32, pitch: isize, state: &mut TrackState<'a>) {
     let (attack, decay, sustain, release) = state.envelope;
     let (unison_count, detune) = state.detune;
-    let mut frequency = 220.0 * (2.0f32).powf((state.octave * 12 + pitch) as f32 / 12.0) * state.tune;
+    let mut frequency =
+        220.0 * (2.0f32).powf((state.octave * 12 + pitch) as f32 / 12.0) * state.tune;
     let length = partial_max(length - state.gate, 0.0);
 
     for _ in 0..unison_count {
@@ -55,7 +56,7 @@ pub fn parse_note<'a>(length: f32, pitch: isize, state: &TrackState<'a>, notes: 
                 state.position,
                 state.position + attack_len,
             );
-            notes.push(note);
+            state.notes.push(note);
         }
 
         if decay > 0.0 && length > attack {
@@ -69,7 +70,7 @@ pub fn parse_note<'a>(length: f32, pitch: isize, state: &TrackState<'a>, notes: 
                 state.position + attack,
                 state.position + attack + decay_len,
             );
-            notes.push(note);
+            state.notes.push(note);
         }
 
         if length > attack + decay {
@@ -83,7 +84,7 @@ pub fn parse_note<'a>(length: f32, pitch: isize, state: &TrackState<'a>, notes: 
                 state.position + attack + decay,
                 state.position + attack + decay + sustain_len,
             );
-            notes.push(note);
+            state.notes.push(note);
         }
 
         if release > 0.0 {
@@ -107,18 +108,14 @@ pub fn parse_note<'a>(length: f32, pitch: isize, state: &TrackState<'a>, notes: 
                 state.position + length,
                 state.position + length + release_len,
             );
-            notes.push(note);
+            state.notes.push(note);
         }
 
         frequency *= 1.0 + detune;
     }
 }
 
-pub fn parse_instruction<'a>(
-    inst: &Instruction,
-    state: &mut TrackState<'a>,
-    notes: &mut Vec<Note>,
-) {
+pub fn parse_instruction<'a>(inst: &Instruction, state: &mut TrackState<'a>) {
     match inst {
         Instruction::Octave(octave) => state.octave += octave,
         Instruction::Tempo(tempo) => state.tempo = *tempo as f32,
@@ -130,13 +127,13 @@ pub fn parse_instruction<'a>(
         Instruction::Envelope(a, d, s, r) => state.envelope = (*a, *d, *s, *r),
         Instruction::Note(pitch, length) => {
             let length = 240.0 / state.tempo * note_length_to_float(&length, state.default_length);
-            parse_note(length, *pitch, state, notes);
+            parse_note(length, *pitch, state);
             state.position += length;
         }
         Instruction::Chord(pitch, length) => {
             let length = 240.0 / state.tempo * note_length_to_float(&length, state.default_length);
             for &note in pitch {
-                parse_note(length, note, state, notes);
+                parse_note(length, note, state);
             }
             state.position += length;
         }
@@ -149,7 +146,7 @@ pub fn parse_instruction<'a>(
         }
         Instruction::Repeat(track, times) => {
             for _ in 0..*times {
-                parse_track(track, state, notes);
+                parse_track(track, state);
             }
         }
         Instruction::DefinePCMTone(pcm) => {
@@ -167,9 +164,9 @@ pub fn parse_instruction<'a>(
     }
 }
 
-pub fn parse_track<'a>(track: &[Instruction], state: &mut TrackState<'a>, notes: &mut Vec<Note>) {
+pub fn parse_track<'a>(track: &[Instruction], state: &mut TrackState<'a>) {
     for inst in track {
-        parse_instruction(inst, state, notes);
+        parse_instruction(inst, state);
     }
 }
 
@@ -193,6 +190,7 @@ impl Tone {
 }
 
 pub struct TrackState<'a> {
+    notes: Vec<Note>,
     position: f32,
     tempo: f32,
     default_length: f32,
@@ -210,6 +208,7 @@ pub struct TrackState<'a> {
 impl<'a> TrackState<'a> {
     pub fn new(fn_tones: &'a [FnTone], pcm_tones: Vec<Arc<Vec<f32>>>) -> Self {
         Self {
+            notes: Vec::new(),
             position: 0.0,
             tempo: 120.0,
             default_length: 1.0 / 8.0,
@@ -223,6 +222,26 @@ impl<'a> TrackState<'a> {
             tune: 1.0,
             pcm_tones,
         }
+    }
+
+    pub fn reset(&mut self) {
+        self.position = 0.0;
+        self.default_length = 1.0 / 8.0;
+        self.volume = 1.0;
+        self.tone = Tone::FnTone(self.fn_tones[0]);
+        self.octave = 0;
+        self.detune = (1, 0.0);
+        self.envelope = (0.0, 0.0, 1.0, 0.0);
+        self.gate = 0.001;
+        self.tune = 1.0;
+    }
+
+    pub fn push_note(&mut self, note: Note) {
+        self.notes.push(note);
+    }
+
+    pub fn drain_notes_queue(&mut self) -> NotesQueue {
+        NotesQueue::new(self.notes.split_off(0))
     }
 }
 
@@ -259,18 +278,14 @@ static TONES: &[FnTone] = &[
 
 impl Generator {
     pub fn new(sample_rate: f32, tracks: &[Track]) -> Self {
-        let mut notes = Vec::new();
-        let mut tempo = 120.0;
-        let mut pcm_tones = Vec::new();
+        let mut state = TrackState::new(TONES, Vec::new());
         for track in tracks {
-            let mut state = TrackState::new(TONES, pcm_tones);
-            state.tempo = tempo;
-            parse_track(track, &mut state, &mut notes);
-            tempo = state.tempo;
-            pcm_tones = state.pcm_tones;
+            parse_track(track, &mut state);
+            state.reset();
         }
 
-        let track_length = notes
+        let track_length = state
+            .notes
             .iter()
             .map(|note| note.end_at())
             .fold(0.0, partial_max);
@@ -278,7 +293,7 @@ impl Generator {
         Self {
             sample_rate,
             position: 0.0,
-            notes_queue: NotesQueue::new(notes),
+            notes_queue: state.drain_notes_queue(),
             ringing_notes: vec![],
             track_length,
         }
@@ -292,7 +307,7 @@ impl Generator {
         self.track_length
     }
 
-    pub fn into_i16_stream(self) -> impl Iterator<Item=i16> {
+    pub fn into_i16_stream(self) -> impl Iterator<Item = i16> {
         self.map(|sample| (sample * 32767.0) as i16)
     }
 
