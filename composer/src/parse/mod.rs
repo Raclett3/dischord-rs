@@ -7,6 +7,7 @@ pub mod volume;
 
 use crate::tokenize::{Token, TokenKind};
 use std::fmt;
+use tone::Effect;
 
 #[macro_export]
 macro_rules! try_or_ok_none {
@@ -43,6 +44,7 @@ pub enum Instruction {
     Repeat(Track, usize),
     Length(Vec<NoteLength>),
     Tune(f32),
+    Effect(Effect),
 }
 
 pub type Track = Vec<Instruction>;

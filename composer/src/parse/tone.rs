@@ -10,6 +10,30 @@ fn hex_to_num(hex: u8) -> Option<usize> {
     }
 }
 
+#[derive(PartialEq, Debug)]
+pub enum Effect {
+    Delay { delay: f32, feedback: f32 },
+}
+
+fn effects(stream: &mut RollbackableTokenStream) -> ParseResult {
+    let (effect_at, effect) = stream.take_character()?;
+
+    match effect {
+        'd' => {
+            let params: Vec<_> = stream
+                .comma_separated_n_numbers(2)?
+                .into_iter()
+                .map(|x| x as f32 / 1000.0)
+                .collect();
+
+            let delay = params[0];
+            let feedback = params[1];
+            Ok(Some(Instruction::Effect(Effect::Delay { delay, feedback })))
+        }
+        _ => Err(ParseError::unexpected_char(effect_at, effect)),
+    }
+}
+
 pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
     if stream.expect_character('@').is_err() {
         return Ok(None);
@@ -56,6 +80,7 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
             let (_, tune) = stream.take_number()?;
             Ok(Some(Instruction::Tune(tune as f32 / 1000.0)))
         }
+        'f' => effects(stream),
         _ => Err(ParseError::unexpected_char(inst_at, inst)),
     }
 }

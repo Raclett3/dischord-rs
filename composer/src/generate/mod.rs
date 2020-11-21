@@ -1,7 +1,10 @@
+pub mod effects;
 pub mod note;
 pub mod tones;
 
+use crate::parse::tone::Effect;
 use crate::parse::{Instruction, NoteLength, Track};
+use effects::{Effector, EffectsQueue};
 use note::{Note, NotesQueue};
 use std::sync::Arc;
 
@@ -161,6 +164,14 @@ pub fn parse_instruction<'a>(inst: &Instruction, state: &mut TrackState<'a>) {
         }
         Instruction::Gate(gate) => state.gate = *gate,
         Instruction::Tune(tune) => state.tune = *tune,
+        Instruction::Effect(effect) => {
+            let effect = match *effect {
+                Effect::Delay { delay, feedback } => {
+                    Box::new(effects::Delay::new(delay, feedback, state.sample_rate))
+                }
+            };
+            state.effects.push((state.position, effect));
+        }
     }
 }
 
@@ -190,6 +201,8 @@ impl Tone {
 }
 
 pub struct TrackState<'a> {
+    sample_rate: f32,
+    effects: Vec<(f32, Box<dyn Effector>)>,
     notes: Vec<Note>,
     position: f32,
     tempo: f32,
@@ -206,8 +219,10 @@ pub struct TrackState<'a> {
 }
 
 impl<'a> TrackState<'a> {
-    pub fn new(fn_tones: &'a [FnTone], pcm_tones: Vec<Arc<Vec<f32>>>) -> Self {
+    pub fn new(sample_rate: f32, fn_tones: &'a [FnTone], pcm_tones: Vec<Arc<Vec<f32>>>) -> Self {
         Self {
+            sample_rate,
+            effects: Vec::new(),
             notes: Vec::new(),
             position: 0.0,
             tempo: 120.0,
@@ -243,6 +258,10 @@ impl<'a> TrackState<'a> {
     pub fn drain_notes_queue(&mut self) -> NotesQueue {
         NotesQueue::new(self.notes.split_off(0))
     }
+
+    pub fn drain_effects_queue(&mut self) -> EffectsQueue {
+        EffectsQueue::new(self.effects.split_off(0))
+    }
 }
 
 fn u16_to_bytes(value: u16) -> impl Iterator<Item = u8> {
@@ -262,7 +281,9 @@ pub struct Generator {
     sample_rate: f32,
     position: f32,
     notes_queues: Vec<NotesQueue>,
+    effects_queues: Vec<EffectsQueue>,
     ringing_notes: Vec<Vec<Note>>,
+    applied_effects: Vec<Vec<Box<dyn Effector>>>,
     track_length: f32,
 }
 
@@ -278,15 +299,15 @@ static TONES: &[FnTone] = &[
 
 impl Generator {
     pub fn new(sample_rate: f32, tracks: &[Track]) -> Self {
-        let mut state = TrackState::new(TONES, Vec::new());
-        let notes_queues: Vec<_> = tracks
+        let mut state = TrackState::new(sample_rate, TONES, Vec::new());
+        let (notes_queues, effects_queues): (Vec<_>, Vec<_>) = tracks
             .iter()
             .map(|track| {
                 parse_track(track, &mut state);
                 state.reset();
-                state.drain_notes_queue()
+                (state.drain_notes_queue(), state.drain_effects_queue())
             })
-            .collect();
+            .unzip();
 
         let track_length = notes_queues
             .iter()
@@ -297,14 +318,15 @@ impl Generator {
             sample_rate,
             position: 0.0,
             notes_queues,
+            effects_queues,
             ringing_notes: vec![Vec::new(); tracks.len()],
+            applied_effects: (0..(tracks.len())).map(|_| Vec::new()).collect(),
             track_length,
         }
     }
 
     pub fn is_over(&self) -> bool {
-        self.ringing_notes.iter().all(|x| x.is_empty())
-            && self.notes_queues.iter().all(|x| x.is_empty())
+        self.track_length + 1.0 <= self.position
     }
 
     pub fn track_length(&self) -> f32 {
@@ -364,11 +386,23 @@ impl Iterator for Generator {
         let mut sample = 0.0;
 
         let zipped = self
+            .effects_queues
+            .iter_mut()
+            .zip(self.applied_effects.iter_mut());
+
+        for (effects_queue, applied_effects) in zipped {
+            while let Some(note) = effects_queue.next_before(self.position) {
+                applied_effects.push(note);
+            }
+        }
+
+        let zipped = self
             .notes_queues
             .iter_mut()
-            .zip(self.ringing_notes.iter_mut());
+            .zip(self.ringing_notes.iter_mut())
+            .zip(self.applied_effects.iter_mut());
 
-        for (notes_queue, ringing_notes) in zipped {
+        for ((notes_queue, ringing_notes), applied_effects) in zipped {
             while let Some(note) = notes_queue.next_before(self.position) {
                 ringing_notes.push(note);
             }
@@ -380,9 +414,16 @@ impl Iterator for Generator {
                     cursor += 1;
                 }
             }
+            let mut track_sample = 0.0;
             for note in ringing_notes {
-                sample += note.get_sample(self.position);
+                track_sample += note.get_sample(self.position);
             }
+
+            for effect in applied_effects {
+                track_sample = effect.apply(track_sample);
+            }
+
+            sample += track_sample
         }
 
         self.position += 1.0 / self.sample_rate;
