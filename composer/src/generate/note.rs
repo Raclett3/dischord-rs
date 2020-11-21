@@ -85,6 +85,10 @@ impl NotesQueue {
         Some(self.notes.remove(self.notes.len() - 1))
     }
 
+    pub fn iter(&self) -> impl Iterator<Item=&Note> {
+        self.notes.iter()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.notes.is_empty()
     }

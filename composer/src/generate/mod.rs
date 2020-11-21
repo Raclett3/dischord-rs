@@ -261,8 +261,8 @@ fn u32_to_bytes(value: u32) -> impl Iterator<Item = u8> {
 pub struct Generator {
     sample_rate: f32,
     position: f32,
-    notes_queue: NotesQueue,
-    ringing_notes: Vec<Note>,
+    notes_queues: Vec<NotesQueue>,
+    ringing_notes: Vec<Vec<Note>>,
     track_length: f32,
 }
 
@@ -279,28 +279,32 @@ static TONES: &[FnTone] = &[
 impl Generator {
     pub fn new(sample_rate: f32, tracks: &[Track]) -> Self {
         let mut state = TrackState::new(TONES, Vec::new());
-        for track in tracks {
-            parse_track(track, &mut state);
-            state.reset();
-        }
-
-        let track_length = state
-            .notes
+        let notes_queues: Vec<_> = tracks
             .iter()
-            .map(|note| note.end_at())
+            .map(|track| {
+                parse_track(track, &mut state);
+                state.reset();
+                state.drain_notes_queue()
+            })
+            .collect();
+
+        let track_length = notes_queues
+            .iter()
+            .flat_map(|queue| queue.iter().map(|note| note.end_at()))
             .fold(0.0, partial_max);
 
         Self {
             sample_rate,
             position: 0.0,
-            notes_queue: state.drain_notes_queue(),
-            ringing_notes: vec![],
+            notes_queues,
+            ringing_notes: vec![Vec::new(); tracks.len()],
             track_length,
         }
     }
 
     pub fn is_over(&self) -> bool {
-        self.ringing_notes.is_empty() && self.notes_queue.is_empty()
+        self.ringing_notes.iter().all(|x| x.is_empty())
+            && self.notes_queues.iter().all(|x| x.is_empty())
     }
 
     pub fn track_length(&self) -> f32 {
@@ -358,22 +362,27 @@ impl Iterator for Generator {
         }
 
         let mut sample = 0.0;
-        while let Some(note) = self.notes_queue.next_before(self.position) {
-            self.ringing_notes.push(note);
-        }
 
-        let mut cursor = 0;
+        let zipped = self
+            .notes_queues
+            .iter_mut()
+            .zip(self.ringing_notes.iter_mut());
 
-        while cursor < self.ringing_notes.len() {
-            if self.ringing_notes[cursor].is_over(self.position) {
-                self.ringing_notes.remove(cursor);
-            } else {
-                cursor += 1;
+        for (notes_queue, ringing_notes) in zipped {
+            while let Some(note) = notes_queue.next_before(self.position) {
+                ringing_notes.push(note);
             }
-        }
-
-        for note in &self.ringing_notes {
-            sample += note.get_sample(self.position);
+            let mut cursor = 0;
+            while cursor < ringing_notes.len() {
+                if ringing_notes[cursor].is_over(self.position) {
+                    ringing_notes.remove(cursor);
+                } else {
+                    cursor += 1;
+                }
+            }
+            for note in ringing_notes {
+                sample += note.get_sample(self.position);
+            }
         }
 
         self.position += 1.0 / self.sample_rate;
