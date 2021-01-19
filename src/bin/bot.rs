@@ -42,7 +42,9 @@ Ln デフォルトの音符の長さを変更します。
 @Tn 実際に鳴らされる周波数をn‰にします。
 @Fxn,... エフェクトを適用します。
 @FDd,f ディレイ(f‰フィードバック, dミリ秒)
-```";
+```
+
+詳細なヘルプはこちら: https://github.com/Raclett3/dischord-rs/blob/master/MML.md";
 
 fn to_riff(mml: &str) -> Result<Vec<u8>, String> {
     let tokens = tokenize(&mml)?;
