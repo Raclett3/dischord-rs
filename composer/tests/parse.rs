@@ -196,3 +196,24 @@ fn test_repeat() {
     assert!(single_parse(repeat, "[CDE").is_err());
     assert!(single_parse(repeat, "94").unwrap().is_none());
 }
+
+#[test]
+fn test_synthesize() {
+    use parse::tone::synthesize;
+    use parse::{
+        Instruction::Synthesize,
+        ToneModifier::{Tone, Tune},
+    };
+
+    assert_eq!(
+        single_parse(synthesize, "@(@0@T1000,@4@T2000)"),
+        Ok(Some(Synthesize(vec![
+            vec![Tone(0), Tune(1.0)],
+            vec![Tone(4), Tune(2.0)]
+        ])))
+    );
+    assert!(single_parse(synthesize, "@(CE)").is_err());
+    assert!(single_parse(synthesize, "@(@0").is_err());
+    assert!(single_parse(synthesize, "@").unwrap().is_none());
+    assert!(single_parse(synthesize, "94").unwrap().is_none());
+}

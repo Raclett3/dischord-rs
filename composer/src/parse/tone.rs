@@ -96,3 +96,30 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
         _ => Err(ParseError::unexpected_char(inst_at, inst)),
     }
 }
+
+pub fn synthesize(stream: &mut RollbackableTokenStream) -> ParseResult {
+    if stream.expect_character('@').is_err() || stream.expect_character('(').is_err() {
+        return Ok(None);
+    }
+
+    let mut tones = vec![vec![]];
+
+    while stream.expect_character(')').is_err() {
+        if stream.expect_character(',').is_ok() {
+            tones.push(vec![]);
+            continue;
+        }
+
+        if let Some(Instruction::ToneModifier(modifier)) = tone(stream)? {
+            tones.last_mut().unwrap().push(modifier);
+        } else {
+            if let Some(token) = stream.next() {
+                return Err(ParseError::UnexpectedToken(token.clone()));
+            } else {
+                return Err(ParseError::UnexpectedEOF);
+            }
+        }
+    }
+
+    Ok(Some(Instruction::Synthesize(tones)))
+}

@@ -41,80 +41,76 @@ fn partial_max<T: Copy + PartialOrd>(a: T, b: T) -> T {
 }
 
 pub fn parse_note<'a>(length: f32, pitch: isize, state: &mut TrackState<'a>) {
-    let (attack, decay, sustain, release) = state.envelope;
-    let (unison_count, detune) = state.detune;
-    let mut frequency =
-        220.0 * (2.0f32).powf((state.octave * 12 + pitch) as f32 / 12.0) * state.tune;
-    let length = partial_max(length - state.gate, 0.0);
-
-    for _ in 0..unison_count {
-        if state.envelope.0 != 0.0 {
-            let attack_len = partial_min(length, attack);
-            let note = Note::new(
-                frequency,
-                state.tone.clone(),
-                0.0,
-                state.volume * attack_len / attack,
-                0.0,
-                state.position,
-                state.position + attack_len,
-            );
-            state.notes.push(note);
+    for tone in &state.tones {
+        let (attack, decay, sustain, release) = tone.envelope;
+        let (unison_count, detune) = tone.detune;
+        let mut frequency =
+            220.0 * (2.0f32).powf((state.octave * 12 + pitch) as f32 / 12.0) * tone.tune;
+        let length = partial_max(length - tone.gate, 0.0);
+        for _ in 0..unison_count {
+            if attack != 0.0 {
+                let attack_len = partial_min(length, attack);
+                let note = Note::new(
+                    frequency,
+                    tone.tone.clone(),
+                    0.0,
+                    state.volume * attack_len / attack,
+                    0.0,
+                    state.position,
+                    state.position + attack_len,
+                );
+                state.notes.push(note);
+            }
+            if decay > 0.0 && length > attack {
+                let decay_len = partial_min(length - attack, decay);
+                let note = Note::new(
+                    frequency,
+                    tone.tone.clone(),
+                    state.volume,
+                    state.volume - (state.volume - state.volume * sustain) * decay_len / decay,
+                    attack,
+                    state.position + attack,
+                    state.position + attack + decay_len,
+                );
+                state.notes.push(note);
+            }
+            if length > attack + decay {
+                let sustain_len = length - (attack + decay);
+                let note = Note::new(
+                    frequency,
+                    tone.tone.clone(),
+                    state.volume * sustain,
+                    state.volume * sustain,
+                    attack + decay,
+                    state.position + attack + decay,
+                    state.position + attack + decay + sustain_len,
+                );
+                state.notes.push(note);
+            }
+            if release > 0.0 {
+                let sustain_volume = state.volume * sustain;
+                let init_volume = if length < attack {
+                    length / attack * state.volume
+                } else if length < attack + decay {
+                    let decay_length = length - attack;
+                    state.volume - (state.volume - state.volume * sustain) * decay_length / decay
+                } else {
+                    sustain_volume
+                };
+                let release_len = release;
+                let note = Note::new(
+                    frequency,
+                    tone.tone.clone(),
+                    init_volume,
+                    0.0,
+                    length,
+                    state.position + length,
+                    state.position + length + release_len,
+                );
+                state.notes.push(note);
+            }
+            frequency *= 1.0 + detune;
         }
-
-        if decay > 0.0 && length > attack {
-            let decay_len = partial_min(length - attack, decay);
-            let note = Note::new(
-                frequency,
-                state.tone.clone(),
-                state.volume,
-                state.volume - (state.volume - state.volume * sustain) * decay_len / decay,
-                attack,
-                state.position + attack,
-                state.position + attack + decay_len,
-            );
-            state.notes.push(note);
-        }
-
-        if length > attack + decay {
-            let sustain_len = length - (attack + decay);
-            let note = Note::new(
-                frequency,
-                state.tone.clone(),
-                state.volume * sustain,
-                state.volume * sustain,
-                attack + decay,
-                state.position + attack + decay,
-                state.position + attack + decay + sustain_len,
-            );
-            state.notes.push(note);
-        }
-
-        if release > 0.0 {
-            let sustain_volume = state.volume * sustain;
-            let init_volume = if length < attack {
-                length / attack * state.volume
-            } else if length < attack + decay {
-                let decay_length = length - attack;
-                state.volume - (state.volume - state.volume * sustain) * decay_length / decay
-            } else {
-                sustain_volume
-            };
-
-            let release_len = release;
-            let note = Note::new(
-                frequency,
-                state.tone.clone(),
-                init_volume,
-                0.0,
-                length,
-                state.position + length,
-                state.position + length + release_len,
-            );
-            state.notes.push(note);
-        }
-
-        frequency *= 1.0 + detune;
     }
 }
 
@@ -123,15 +119,6 @@ pub fn parse_instruction<'a>(inst: &Instruction, state: &mut TrackState<'a>) {
         Instruction::Octave(octave) => state.octave += octave,
         Instruction::Tempo(tempo) => state.tempo = *tempo as f32,
         Instruction::Volume(volume) => state.volume = *volume as f32,
-        Instruction::ToneModifier(ToneModifier::Tone(tone)) => {
-            state.tone = Tone::FnTone(*state.fn_tones.get(*tone).unwrap_or(&state.fn_tones[0]))
-        }
-        Instruction::ToneModifier(ToneModifier::Detune(number, ratio)) => {
-            state.detune = (*number, *ratio)
-        }
-        Instruction::ToneModifier(ToneModifier::Envelope(a, d, s, r)) => {
-            state.envelope = (*a, *d, *s, *r)
-        }
         Instruction::Note(pitch, length) => {
             let length = 240.0 / state.tempo * note_length_to_float(&length, state.default_length);
             parse_note(length, *pitch, state);
@@ -156,25 +143,23 @@ pub fn parse_instruction<'a>(inst: &Instruction, state: &mut TrackState<'a>) {
                 parse_track(track, state);
             }
         }
-        Instruction::ToneModifier(ToneModifier::DefinePCMTone(pcm)) => {
-            state.pcm_tones.push(Arc::new(pcm.clone()));
-        }
-        Instruction::ToneModifier(ToneModifier::PCMTone(pcm)) => {
-            state.tone = if *pcm < state.pcm_tones.len() {
-                Tone::PCMTone(state.pcm_tones[*pcm].clone())
-            } else {
-                Tone::FnTone(state.fn_tones[0])
+        Instruction::ToneModifier(modifier) => {
+            let tones = unsafe {
+                std::slice::from_raw_parts_mut(state.tones.as_mut_ptr(), state.tones.len())
             };
+            tones.last_mut().unwrap().modify(state, modifier);
         }
-        Instruction::ToneModifier(ToneModifier::Gate(gate)) => state.gate = *gate,
-        Instruction::ToneModifier(ToneModifier::Tune(tune)) => state.tune = *tune,
-        Instruction::ToneModifier(ToneModifier::Effect(effect)) => {
-            let effect = match *effect {
-                Effect::Delay { delay, feedback } => {
-                    Box::new(effects::Delay::new(delay, feedback, state.sample_rate))
+        Instruction::Synthesize(modifiers) => {
+            state.tones = vec![Tone::new(state.fn_tones[0]); modifiers.len()];
+            let tones = unsafe {
+                std::slice::from_raw_parts_mut(state.tones.as_mut_ptr(), state.tones.len())
+            };
+
+            for (tone, modifiers) in tones.iter_mut().zip(modifiers.iter()) {
+                for modifier in modifiers {
+                    tone.modify(state, modifier);
                 }
-            };
-            state.effects.push((state.position, effect));
+            }
         }
     }
 }
@@ -186,16 +171,68 @@ pub fn parse_track<'a>(track: &[Instruction], state: &mut TrackState<'a>) {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Tone {
+pub enum ToneKind {
     FnTone(FnTone),
     PCMTone(Arc<Vec<f32>>),
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct Tone {
+    tone: ToneKind,
+    detune: (usize, f32),
+    envelope: (f32, f32, f32, f32),
+    gate: f32,
+    tune: f32,
+}
+
 impl Tone {
+    pub fn new(tone: FnTone) -> Self {
+        Tone {
+            tone: ToneKind::FnTone(tone),
+            detune: (1, 0.0),
+            envelope: (0.0, 0.0, 1.0, 0.0),
+            gate: 0.001,
+            tune: 1.0,
+        }
+    }
+
+    pub fn modify(&mut self, state: &mut TrackState, modifier: &ToneModifier) {
+        match modifier {
+            ToneModifier::Tone(tone) => {
+                self.tone =
+                    ToneKind::FnTone(*state.fn_tones.get(*tone).unwrap_or(&state.fn_tones[0]))
+            }
+            ToneModifier::Detune(number, ratio) => self.detune = (*number, *ratio),
+            ToneModifier::Envelope(a, d, s, r) => self.envelope = (*a, *d, *s, *r),
+            ToneModifier::PCMTone(pcm) => {
+                self.tone = if let Some(pcm_tone) = state.pcm_tones.get(*pcm) {
+                    ToneKind::PCMTone(pcm_tone.clone())
+                } else {
+                    ToneKind::FnTone(state.fn_tones[0])
+                };
+            }
+            ToneModifier::Gate(gate) => self.gate = *gate,
+            ToneModifier::Tune(tune) => self.tune = *tune,
+            ToneModifier::DefinePCMTone(pcm) => {
+                state.pcm_tones.push(Arc::new(pcm.clone()));
+            }
+            ToneModifier::Effect(effect) => {
+                let effect = match *effect {
+                    Effect::Delay { delay, feedback } => {
+                        Box::new(effects::Delay::new(delay, feedback, state.sample_rate))
+                    }
+                };
+                state.effects.push((state.position, effect));
+            }
+        }
+    }
+}
+
+impl ToneKind {
     pub fn sample(&self, frequency: f32, position: f32) -> f32 {
         match self {
-            Tone::FnTone(tone) => tone(frequency, position),
-            Tone::PCMTone(tone) => {
+            ToneKind::FnTone(tone) => tone(frequency, position),
+            ToneKind::PCMTone(tone) => {
                 let len = tone.len() as f32;
                 let index = ((frequency * position * len) % len) as usize;
                 tone[index]
@@ -212,13 +249,9 @@ pub struct TrackState<'a> {
     tempo: f32,
     default_length: f32,
     volume: f32,
-    tone: Tone,
+    tones: Vec<Tone>,
     fn_tones: &'a [FnTone],
     octave: isize,
-    detune: (usize, f32),
-    envelope: (f32, f32, f32, f32),
-    gate: f32,
-    tune: f32,
     pcm_tones: Vec<Arc<Vec<f32>>>,
 }
 
@@ -232,13 +265,9 @@ impl<'a> TrackState<'a> {
             tempo: 120.0,
             default_length: 1.0 / 8.0,
             volume: 1.0,
-            tone: Tone::FnTone(fn_tones[0]),
+            tones: vec![Tone::new(fn_tones[0])],
             fn_tones,
             octave: 0,
-            detune: (1, 0.0),
-            envelope: (0.0, 0.0, 1.0, 0.0),
-            gate: 0.001,
-            tune: 1.0,
             pcm_tones,
         }
     }
@@ -247,12 +276,8 @@ impl<'a> TrackState<'a> {
         self.position = 0.0;
         self.default_length = 1.0 / 8.0;
         self.volume = 1.0;
-        self.tone = Tone::FnTone(self.fn_tones[0]);
+        self.tones = vec![Tone::new(self.fn_tones[0])];
         self.octave = 0;
-        self.detune = (1, 0.0);
-        self.envelope = (0.0, 0.0, 1.0, 0.0);
-        self.gate = 0.001;
-        self.tune = 1.0;
     }
 
     pub fn push_note(&mut self, note: Note) {

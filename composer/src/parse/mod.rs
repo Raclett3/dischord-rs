@@ -50,6 +50,7 @@ pub enum Instruction {
     ToneModifier(ToneModifier),
     Repeat(Track, usize),
     Length(Vec<NoteLength>),
+    Synthesize(Vec<Vec<ToneModifier>>),
 }
 
 pub type Track = Vec<Instruction>;
@@ -234,6 +235,7 @@ pub fn parse_stream(
             note::length,
             octave::octave,
             tempo::tempo,
+            tone::synthesize,
             tone::tone,
             volume::volume,
             repeat::repeat,

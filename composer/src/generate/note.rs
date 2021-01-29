@@ -1,9 +1,9 @@
-use crate::generate::Tone;
+use crate::generate::ToneKind;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Note {
     frequency: f32,
-    tone: Tone,
+    tone: ToneKind,
     volume_from: f32,
     volume_to: f32,
     offset: f32,
@@ -43,7 +43,7 @@ impl Note {
 
     pub fn new(
         frequency: f32,
-        tone: Tone,
+        tone: ToneKind,
         volume_from: f32,
         volume_to: f32,
         offset: f32,
