@@ -3,7 +3,7 @@ pub mod note;
 pub mod tones;
 
 use crate::parse::tone::Effect;
-use crate::parse::{Instruction, NoteLength, Track};
+use crate::parse::{Instruction, NoteLength, ToneModifier, Track};
 use effects::{Effector, EffectsQueue};
 use note::{Note, NotesQueue};
 use std::sync::Arc;
@@ -123,11 +123,15 @@ pub fn parse_instruction<'a>(inst: &Instruction, state: &mut TrackState<'a>) {
         Instruction::Octave(octave) => state.octave += octave,
         Instruction::Tempo(tempo) => state.tempo = *tempo as f32,
         Instruction::Volume(volume) => state.volume = *volume as f32,
-        Instruction::Tone(tone) => {
+        Instruction::ToneModifier(ToneModifier::Tone(tone)) => {
             state.tone = Tone::FnTone(*state.fn_tones.get(*tone).unwrap_or(&state.fn_tones[0]))
         }
-        Instruction::Detune(number, ratio) => state.detune = (*number, *ratio),
-        Instruction::Envelope(a, d, s, r) => state.envelope = (*a, *d, *s, *r),
+        Instruction::ToneModifier(ToneModifier::Detune(number, ratio)) => {
+            state.detune = (*number, *ratio)
+        }
+        Instruction::ToneModifier(ToneModifier::Envelope(a, d, s, r)) => {
+            state.envelope = (*a, *d, *s, *r)
+        }
         Instruction::Note(pitch, length) => {
             let length = 240.0 / state.tempo * note_length_to_float(&length, state.default_length);
             parse_note(length, *pitch, state);
@@ -152,19 +156,19 @@ pub fn parse_instruction<'a>(inst: &Instruction, state: &mut TrackState<'a>) {
                 parse_track(track, state);
             }
         }
-        Instruction::DefinePCMTone(pcm) => {
+        Instruction::ToneModifier(ToneModifier::DefinePCMTone(pcm)) => {
             state.pcm_tones.push(Arc::new(pcm.clone()));
         }
-        Instruction::PCMTone(pcm) => {
+        Instruction::ToneModifier(ToneModifier::PCMTone(pcm)) => {
             state.tone = if *pcm < state.pcm_tones.len() {
                 Tone::PCMTone(state.pcm_tones[*pcm].clone())
             } else {
                 Tone::FnTone(state.fn_tones[0])
             };
         }
-        Instruction::Gate(gate) => state.gate = *gate,
-        Instruction::Tune(tune) => state.tune = *tune,
-        Instruction::Effect(effect) => {
+        Instruction::ToneModifier(ToneModifier::Gate(gate)) => state.gate = *gate,
+        Instruction::ToneModifier(ToneModifier::Tune(tune)) => state.tune = *tune,
+        Instruction::ToneModifier(ToneModifier::Effect(effect)) => {
             let effect = match *effect {
                 Effect::Delay { delay, feedback } => {
                     Box::new(effects::Delay::new(delay, feedback, state.sample_rate))

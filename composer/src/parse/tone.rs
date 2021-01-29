@@ -1,4 +1,4 @@
-use crate::parse::{Instruction, ParseError, ParseResult, RollbackableTokenStream};
+use crate::parse::{Instruction, ParseError, ParseResult, RollbackableTokenStream, ToneModifier};
 
 fn hex_to_num(hex: u8) -> Option<usize> {
     if b'0' <= hex && hex <= b'9' {
@@ -28,7 +28,9 @@ fn effects(stream: &mut RollbackableTokenStream) -> ParseResult {
 
             let delay = params[0];
             let feedback = params[1];
-            Ok(Some(Instruction::Effect(Effect::Delay { delay, feedback })))
+            Ok(Some(Instruction::ToneModifier(ToneModifier::Effect(
+                Effect::Delay { delay, feedback },
+            ))))
         }
         _ => Err(ParseError::unexpected_char(effect_at, effect)),
     }
@@ -40,7 +42,7 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
     }
 
     if let Ok((_, number)) = stream.take_number() {
-        return Ok(Some(Instruction::Tone(number)));
+        return Ok(Some(Instruction::ToneModifier(ToneModifier::Tone(number))));
     }
 
     let (inst_at, inst) = stream.take_character()?;
@@ -48,15 +50,17 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
     match inst {
         'd' => {
             let params = stream.comma_separated_n_numbers(2)?;
-            Ok(Some(Instruction::Detune(
+            Ok(Some(Instruction::ToneModifier(ToneModifier::Detune(
                 params[0],
                 params[1] as f32 / 10000.0,
-            )))
+            ))))
         }
         'e' => {
             let params = stream.comma_separated_n_numbers(4)?;
             let params: Vec<_> = params.iter().map(|&x| x as f32 / 100.0).collect();
-            let envelope = Instruction::Envelope(params[0], params[1], params[2], params[3]);
+            let envelope = Instruction::ToneModifier(ToneModifier::Envelope(
+                params[0], params[1], params[2], params[3],
+            ));
             Ok(Some(envelope))
         }
         'h' => {
@@ -69,16 +73,24 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
                         .unwrap_or(0.0)
                 })
                 .collect();
-            Ok(Some(Instruction::DefinePCMTone(pcm)))
+            Ok(Some(Instruction::ToneModifier(
+                ToneModifier::DefinePCMTone(pcm),
+            )))
         }
-        'p' => Ok(Some(Instruction::PCMTone(stream.take_number()?.1))),
+        'p' => Ok(Some(Instruction::ToneModifier(ToneModifier::PCMTone(
+            stream.take_number()?.1,
+        )))),
         'g' => {
             let (_, gate) = stream.take_number()?;
-            Ok(Some(Instruction::Gate(gate as f32 / 1000.0)))
+            Ok(Some(Instruction::ToneModifier(ToneModifier::Gate(
+                gate as f32 / 1000.0,
+            ))))
         }
         't' => {
             let (_, tune) = stream.take_number()?;
-            Ok(Some(Instruction::Tune(tune as f32 / 1000.0)))
+            Ok(Some(Instruction::ToneModifier(ToneModifier::Tune(
+                tune as f32 / 1000.0,
+            ))))
         }
         'f' => effects(stream),
         _ => Err(ParseError::unexpected_char(inst_at, inst)),

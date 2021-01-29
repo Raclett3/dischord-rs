@@ -28,6 +28,18 @@ pub enum NoteLength {
 }
 
 #[derive(PartialEq, Debug)]
+pub enum ToneModifier {
+    Detune(usize, f32),
+    Envelope(f32, f32, f32, f32),
+    Tone(usize),
+    DefinePCMTone(Vec<f32>),
+    PCMTone(usize),
+    Gate(f32),
+    Tune(f32),
+    Effect(Effect),
+}
+
+#[derive(PartialEq, Debug)]
 pub enum Instruction {
     Note(isize, Vec<NoteLength>),
     Chord(Vec<isize>, Vec<NoteLength>),
@@ -35,16 +47,9 @@ pub enum Instruction {
     Octave(isize),
     Tempo(usize),
     Volume(f32),
-    Gate(f32),
-    Tone(usize),
-    DefinePCMTone(Vec<f32>),
-    PCMTone(usize),
-    Detune(usize, f32),
-    Envelope(f32, f32, f32, f32),
+    ToneModifier(ToneModifier),
     Repeat(Track, usize),
     Length(Vec<NoteLength>),
-    Tune(f32),
-    Effect(Effect),
 }
 
 pub type Track = Vec<Instruction>;

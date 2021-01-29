@@ -2,7 +2,7 @@ use composer::*;
 
 #[test]
 fn test_parse() {
-    use parse::{parse, Instruction, NoteLength::*};
+    use parse::{parse, Instruction, NoteLength::*, ToneModifier};
     use tokenize::tokenize;
     assert_eq!(
         parse(&tokenize("T150ab8r4&8..<c4;(cde)4@2[c4d4]2").unwrap()).unwrap(),
@@ -17,7 +17,7 @@ fn test_parse() {
             ],
             vec![
                 Instruction::Chord(vec![3, 5, 7], vec![Length(4)]),
-                Instruction::Tone(2),
+                Instruction::ToneModifier(ToneModifier::Tone(2)),
                 Instruction::Repeat(
                     vec![
                         Instruction::Note(3, vec![Length(4)]),
@@ -126,17 +126,27 @@ fn test_volume() {
 #[test]
 fn test_tone() {
     use parse::tone::tone;
-    use parse::Instruction::{DefinePCMTone, Detune, Envelope, Tone};
+    use parse::{
+        Instruction::ToneModifier,
+        ToneModifier::{DefinePCMTone, Detune, Envelope, Tone},
+    };
 
-    assert_eq!(single_parse(tone, "@2"), Ok(Some(Tone(2))));
-    assert_eq!(single_parse(tone, "@D2,10000"), Ok(Some(Detune(2, 1.0))));
+    assert_eq!(single_parse(tone, "@2"), Ok(Some(ToneModifier(Tone(2)))));
+    assert_eq!(
+        single_parse(tone, "@D2,10000"),
+        Ok(Some(ToneModifier(Detune(2, 1.0))))
+    );
     assert_eq!(
         single_parse(tone, "@E0,100,100,200"),
-        Ok(Some(Envelope(0.0, 1.0, 1.0, 2.0)))
+        Ok(Some(ToneModifier(Envelope(0.0, 1.0, 1.0, 2.0))))
     );
     assert_eq!(
         single_parse(tone, "@H{08F}"),
-        Ok(Some(DefinePCMTone(vec![-1.0, 0.0, 7.0 / 8.0])))
+        Ok(Some(ToneModifier(DefinePCMTone(vec![
+            -1.0,
+            0.0,
+            7.0 / 8.0
+        ]))))
     );
     assert!(single_parse(tone, "@D3").is_err());
     assert!(single_parse(tone, "@D1,10,100").is_err());
