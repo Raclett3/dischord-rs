@@ -37,6 +37,7 @@ pub enum ToneModifier {
     Gate(f32),
     Tune(f32),
     Effect(Effect),
+    Volume(f32),
 }
 
 #[derive(PartialEq, Debug)]

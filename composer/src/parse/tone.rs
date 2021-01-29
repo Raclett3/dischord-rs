@@ -86,6 +86,12 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
                 gate as f32 / 1000.0,
             ))))
         }
+        'v' => {
+            let (_, volume) = stream.take_number()?;
+            Ok(Some(Instruction::ToneModifier(ToneModifier::Volume(
+                volume as f32 / 100.0,
+            ))))
+        }
         't' => {
             let (_, tune) = stream.take_number()?;
             Ok(Some(Instruction::ToneModifier(ToneModifier::Tune(

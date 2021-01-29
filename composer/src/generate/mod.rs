@@ -42,6 +42,7 @@ fn partial_max<T: Copy + PartialOrd>(a: T, b: T) -> T {
 
 pub fn parse_note<'a>(length: f32, pitch: isize, state: &mut TrackState<'a>) {
     for tone in &state.tones {
+        let volume = state.volume * tone.volume;
         let (attack, decay, sustain, release) = tone.envelope;
         let (unison_count, detune) = tone.detune;
         let mut frequency =
@@ -54,7 +55,7 @@ pub fn parse_note<'a>(length: f32, pitch: isize, state: &mut TrackState<'a>) {
                     frequency,
                     tone.tone.clone(),
                     0.0,
-                    state.volume * attack_len / attack,
+                    volume * attack_len / attack,
                     0.0,
                     state.position,
                     state.position + attack_len,
@@ -66,8 +67,8 @@ pub fn parse_note<'a>(length: f32, pitch: isize, state: &mut TrackState<'a>) {
                 let note = Note::new(
                     frequency,
                     tone.tone.clone(),
-                    state.volume,
-                    state.volume - (state.volume - state.volume * sustain) * decay_len / decay,
+                    volume,
+                    volume - (volume - volume * sustain) * decay_len / decay,
                     attack,
                     state.position + attack,
                     state.position + attack + decay_len,
@@ -79,8 +80,8 @@ pub fn parse_note<'a>(length: f32, pitch: isize, state: &mut TrackState<'a>) {
                 let note = Note::new(
                     frequency,
                     tone.tone.clone(),
-                    state.volume * sustain,
-                    state.volume * sustain,
+                    volume * sustain,
+                    volume * sustain,
                     attack + decay,
                     state.position + attack + decay,
                     state.position + attack + decay + sustain_len,
@@ -88,12 +89,12 @@ pub fn parse_note<'a>(length: f32, pitch: isize, state: &mut TrackState<'a>) {
                 state.notes.push(note);
             }
             if release > 0.0 {
-                let sustain_volume = state.volume * sustain;
+                let sustain_volume = volume * sustain;
                 let init_volume = if length < attack {
-                    length / attack * state.volume
+                    length / attack * volume
                 } else if length < attack + decay {
                     let decay_length = length - attack;
-                    state.volume - (state.volume - state.volume * sustain) * decay_length / decay
+                    volume - (volume - volume * sustain) * decay_length / decay
                 } else {
                     sustain_volume
                 };
@@ -185,6 +186,7 @@ pub struct Tone {
     envelope: (f32, f32, f32, f32),
     gate: f32,
     tune: f32,
+    volume: f32,
 }
 
 impl Tone {
@@ -195,6 +197,7 @@ impl Tone {
             envelope: (0.0, 0.0, 1.0, 0.0),
             gate: 0.001,
             tune: 1.0,
+            volume: 1.0,
         }
     }
 
@@ -215,6 +218,7 @@ impl Tone {
             }
             ToneModifier::Gate(gate) => self.gate = *gate,
             ToneModifier::Tune(tune) => self.tune = *tune,
+            ToneModifier::Volume(volume) => self.volume = *volume,
             ToneModifier::DefinePCMTone(pcm) => {
                 state.pcm_tones.push(Arc::new(pcm.clone()));
             }
