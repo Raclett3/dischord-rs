@@ -147,7 +147,9 @@ pub fn parse_instruction<'a>(inst: &Instruction, state: &mut TrackState<'a>) {
             let tones = unsafe {
                 std::slice::from_raw_parts_mut(state.tones.as_mut_ptr(), state.tones.len())
             };
-            tones.last_mut().unwrap().modify(state, modifier);
+            for tone in tones.iter_mut() {
+                tone.modify(state, modifier);
+            }
         }
         Instruction::Synthesize(modifiers) => {
             state.tones = vec![Tone::new(state.fn_tones[0]); modifiers.len()];
