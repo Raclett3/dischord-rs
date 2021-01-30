@@ -13,6 +13,8 @@ fn hex_to_num(hex: u8) -> Option<usize> {
 #[derive(PartialEq, Debug)]
 pub enum Effect {
     Delay { delay: f32, feedback: f32 },
+    LowPassFilter { cut_off: f32 },
+    HighPassFilter { cut_off: f32 },
 }
 
 fn effects(stream: &mut RollbackableTokenStream) -> ParseResult {
@@ -30,6 +32,22 @@ fn effects(stream: &mut RollbackableTokenStream) -> ParseResult {
             let feedback = params[1];
             Ok(Some(Instruction::ToneModifier(ToneModifier::Effect(
                 Effect::Delay { delay, feedback },
+            ))))
+        }
+        'l' => {
+            let params = stream.comma_separated_n_numbers(1)?;
+
+            let cut_off = params[0] as f32;
+            Ok(Some(Instruction::ToneModifier(ToneModifier::Effect(
+                Effect::LowPassFilter { cut_off },
+            ))))
+        }
+        'h' => {
+            let params = stream.comma_separated_n_numbers(1)?;
+
+            let cut_off = params[0] as f32;
+            Ok(Some(Instruction::ToneModifier(ToneModifier::Effect(
+                Effect::HighPassFilter { cut_off },
             ))))
         }
         _ => Err(ParseError::unexpected_char(effect_at, effect)),

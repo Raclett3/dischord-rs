@@ -223,10 +223,16 @@ impl Tone {
                 state.pcm_tones.push(Arc::new(pcm.clone()));
             }
             ToneModifier::Effect(effect) => {
-                let effect = match *effect {
+                let effect: Box<(dyn Effector)> = match *effect {
                     Effect::Delay { delay, feedback } => {
                         Box::new(effects::Delay::new(delay, feedback, state.sample_rate))
                     }
+                    Effect::LowPassFilter { cut_off } => Box::new(
+                        effects::LowPassFilter::new(cut_off, state.sample_rate),
+                    ),
+                    Effect::HighPassFilter { cut_off } => Box::new(
+                        effects::HighPassFilter::new(cut_off, state.sample_rate),
+                    ),
                 };
                 state.effects.push((state.position, effect));
             }
