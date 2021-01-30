@@ -111,7 +111,7 @@ pub fn synthesize(stream: &mut RollbackableTokenStream) -> ParseResult {
     let mut tones = vec![vec![]];
 
     while stream.expect_character(')').is_err() {
-        if stream.expect_character(',').is_ok() {
+        if stream.expect_character(',').is_ok() || stream.expect_character('|').is_ok() {
             tones.push(vec![]);
             continue;
         }
