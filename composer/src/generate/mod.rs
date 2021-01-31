@@ -120,7 +120,7 @@ pub fn parse_play_pcm<'a>(pcm_num: usize, sample_rate: f32, state: &mut TrackSta
     let length = pcm.len() as f32 / sample_rate;
     let volume = state.volume;
     let note = Note::new(
-        state.sample_rate / sample_rate,
+        1.0 / length,
         ToneKind::PCMTone(pcm),
         volume,
         volume,
