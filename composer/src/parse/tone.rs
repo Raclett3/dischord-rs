@@ -56,6 +56,12 @@ fn effects(stream: &mut RollbackableTokenStream) -> ParseResult {
     }
 }
 
+static BASE64_CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+pub fn base64_to_bits(ch: u8) -> usize {
+    BASE64_CHARS.iter().position(|&x| x == ch).unwrap_or(0)
+}
+
 pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
     if stream.expect_character('@').is_err() {
         return Ok(None);
@@ -92,6 +98,27 @@ pub fn tone(stream: &mut RollbackableTokenStream) -> ParseResult {
                         .map(|x| (x as f32 - 8.0) / 8.0)
                         .unwrap_or(0.0)
                 })
+                .collect();
+            Ok(Some(Instruction::ToneModifier(
+                ToneModifier::DefinePCMTone(pcm),
+            )))
+        }
+        'n' => {
+            let (_, string) = stream.take_brace_string()?;
+            let pcm = string
+                .bytes()
+                .flat_map(|byte| {
+                    let bits = base64_to_bits(byte);
+                    (0..6)
+                        .rev()
+                        .map(move |i| if bits >> i & 1 == 0 { -1 } else { 1 })
+                })
+                .scan(0i8, |acc, x| {
+                    let (sum, _) = acc.overflowing_add(x);
+                    *acc = sum;
+                    Some(*acc)
+                })
+                .map(|x| x as f32 / 128.0)
                 .collect();
             Ok(Some(Instruction::ToneModifier(
                 ToneModifier::DefinePCMTone(pcm),
