@@ -119,7 +119,6 @@ pub fn parse_play_pcm<'a>(pcm_num: usize, sample_rate: f32, state: &mut TrackSta
     let pcm = state.pcm_tones.get(pcm_num).cloned().unwrap_or(Arc::new(vec![0.0]));
     let length = pcm.len() as f32 / sample_rate;
     let volume = state.volume;
-    eprintln!("{:?}", sample_rate / state.sample_rate);
     let note = Note::new(
         state.sample_rate / sample_rate,
         ToneKind::PCMTone(pcm),
