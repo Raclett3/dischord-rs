@@ -5,6 +5,8 @@ fn hex_to_num(hex: u8) -> Option<usize> {
         Some((hex - b'0') as usize)
     } else if b'a' <= hex && hex <= b'f' {
         Some((hex - b'a') as usize + 10)
+    } else if b'A' <= hex && hex <= b'F' {
+        Some((hex - b'A') as usize + 10)
     } else {
         None
     }
