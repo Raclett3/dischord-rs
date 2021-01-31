@@ -115,6 +115,24 @@ pub fn parse_note<'a>(length: f32, pitch: isize, state: &mut TrackState<'a>) {
     }
 }
 
+pub fn parse_play_pcm<'a>(pcm_num: usize, sample_rate: f32, state: &mut TrackState<'a>) {
+    let pcm = state.pcm_tones.get(pcm_num).cloned().unwrap_or(Arc::new(vec![0.0]));
+    let length = pcm.len() as f32 / sample_rate;
+    let volume = state.volume;
+    eprintln!("{:?}", sample_rate / state.sample_rate);
+    let note = Note::new(
+        state.sample_rate / sample_rate,
+        ToneKind::PCMTone(pcm),
+        volume,
+        volume,
+        0.0,
+        state.position,
+        state.position + length,
+    );
+    state.notes.push(note);
+    state.position += length;
+}
+
 pub fn parse_instruction<'a>(inst: &Instruction, state: &mut TrackState<'a>) {
     match inst {
         Instruction::Octave(octave) => state.octave += octave,
@@ -131,6 +149,9 @@ pub fn parse_instruction<'a>(inst: &Instruction, state: &mut TrackState<'a>) {
                 parse_note(length, note, state);
             }
             state.position += length;
+        }
+        Instruction::PlayPCM(pcm_num, sample_rate) => {
+            parse_play_pcm(*pcm_num, *sample_rate, state);
         }
         Instruction::Rest(length) => {
             let length = 240.0 / state.tempo * note_length_to_float(&length, state.default_length);

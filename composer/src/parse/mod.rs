@@ -43,6 +43,7 @@ pub enum ToneModifier {
 #[derive(PartialEq, Debug)]
 pub enum Instruction {
     Note(isize, Vec<NoteLength>),
+    PlayPCM(usize, f32),
     Chord(Vec<isize>, Vec<NoteLength>),
     Rest(Vec<NoteLength>),
     Octave(isize),
@@ -233,6 +234,7 @@ pub fn parse_stream(
             note::note,
             note::rest,
             note::chord,
+            note::play_pcm,
             note::length,
             octave::octave,
             tempo::tempo,

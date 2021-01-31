@@ -118,3 +118,16 @@ pub fn note(stream: &mut RollbackableTokenStream) -> ParseResult {
 
     Ok(Some(Instruction::Note(pitch, length)))
 }
+
+pub fn play_pcm(stream: &mut RollbackableTokenStream) -> ParseResult {
+    if stream.expect_character('p').is_err() {
+        return Ok(None);
+    }
+
+    let params = stream.comma_separated_n_numbers(2)?;
+
+    let pcm_number = params[0];
+    let sampling_rate = params[1] as f32;
+
+    Ok(Some(Instruction::PlayPCM(pcm_number, sampling_rate)))
+}
