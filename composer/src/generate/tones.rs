@@ -17,24 +17,28 @@ use std::sync::Mutex;
 
 struct WaveCache {
     resolution: usize,
-    wave: OnceCell<Mutex<Vec<Option<f32>>>>,
+    wave: OnceCell<Vec<Mutex<Vec<Option<f32>>>>>,
 }
 
 impl WaveCache {
     const fn new() -> Self {
         WaveCache {
-            resolution: 3000,
+            resolution: 5000,
             wave: OnceCell::new(),
         }
     }
 
-    fn get_cache(&self) -> &Mutex<Vec<Option<f32>>> {
-        self.wave
-            .get_or_init(|| Mutex::new(vec![None; self.resolution]))
+    fn get_cache(&self, frequency: f32) -> &Mutex<Vec<Option<f32>>> {
+        let idx = (frequency.log2().floor() as usize).min(15);
+        &self.wave.get_or_init(|| {
+            (0..16)
+                .map(|_| Mutex::new(vec![None; self.resolution]))
+                .collect()
+        })[idx]
     }
 
     fn sample<F: Fn(f32, f32) -> f32>(&self, frequency: f32, position: f32, func: F) -> f32 {
-        let mut cache = self.get_cache().lock().unwrap();
+        let mut cache = self.get_cache(frequency).lock().unwrap();
         let cache_position =
             (position * frequency * self.resolution as f32) as usize % self.resolution;
 
@@ -60,7 +64,8 @@ fn pulse(duty: f32) -> impl Fn(f32, f32) -> f32 {
                 .map(|x| x as f32)
                 .take_while(|x| x * frequency < 20000.0)
                 .map(|n| {
-                    (1.0 - (2.0 * n * PI * duty).cos()) * (2.0 * n * PI * frequency * position).sin()
+                    (1.0 - (2.0 * n * PI * duty).cos())
+                        * (2.0 * n * PI * frequency * position).sin()
                         / n
                         + (2.0 * n * PI * duty).sin() * (2.0 * n * PI * frequency * position).cos()
                             / n
