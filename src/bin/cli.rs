@@ -11,36 +11,37 @@ use std::sync::{
 };
 
 fn main() -> Result<()> {
-    let mut buf = String::new();
-    stdin().lock().read_to_string(&mut buf)?;
-    let tokens = match tokenize(&buf) {
-        Ok(tokens) => tokens,
-        Err(err) => {
-            eprintln!("{}", err);
-            std::process::exit(1);
+    loop {
+        let mut buf = String::new();
+        stdin().lock().read_to_string(&mut buf)?;
+        let tokens = match tokenize(&buf) {
+            Ok(tokens) => tokens,
+            Err(err) => {
+                eprintln!("{}", err);
+                std::process::exit(1);
+            }
+        };
+        let parsed = match parse(&tokens) {
+            Ok(parsed) => parsed,
+            Err(err) => {
+                eprintln!("{}", err);
+                std::process::exit(1);
+            }
+        };
+    
+        let host = cpal::default_host();
+    
+        let device = host
+            .default_output_device()
+            .expect("failed to find a default output device");
+        let config = device.default_output_config().unwrap();
+    
+        match config.sample_format() {
+            cpal::SampleFormat::F32 => play::<f32>(&device, &config.into(), &parsed).unwrap(),
+            cpal::SampleFormat::I16 => play::<i16>(&device, &config.into(), &parsed).unwrap(),
+            cpal::SampleFormat::U16 => play::<u16>(&device, &config.into(), &parsed).unwrap(),
         }
-    };
-    let parsed = match parse(&tokens) {
-        Ok(parsed) => parsed,
-        Err(err) => {
-            eprintln!("{}", err);
-            std::process::exit(1);
-        }
-    };
-
-    let host = cpal::default_host();
-
-    let device = host
-        .default_output_device()
-        .expect("failed to find a default output device");
-    let config = device.default_output_config().unwrap();
-
-    match config.sample_format() {
-        cpal::SampleFormat::F32 => play::<f32>(&device, &config.into(), &parsed).unwrap(),
-        cpal::SampleFormat::I16 => play::<i16>(&device, &config.into(), &parsed).unwrap(),
-        cpal::SampleFormat::U16 => play::<u16>(&device, &config.into(), &parsed).unwrap(),
     }
-    Ok(())
 }
 
 fn play<T: cpal::Sample>(
@@ -70,6 +71,7 @@ fn play<T: cpal::Sample>(
     while !is_over.load(SeqCst) {
         std::thread::sleep(std::time::Duration::from_millis(1000));
     }
+    println!("I finished playing the music. What's next?");
 
     Some(())
 }
