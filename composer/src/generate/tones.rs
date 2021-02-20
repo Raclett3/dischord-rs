@@ -64,10 +64,11 @@ fn pulse(duty: f32) -> impl Fn(f32, f32) -> f32 {
                 .map(|x| x as f32)
                 .take_while(|x| x * frequency < 20000.0)
                 .map(|n| {
-                    (1.0 - (2.0 * n * PI * duty).cos())
-                        * (2.0 * n * PI * frequency * position).sin()
+                    (1.0 - f32::cos(2.0 * n * PI * duty))
+                        * f32::sin(2.0 * n * PI * frequency * position)
                         / n
-                        + (2.0 * n * PI * duty).sin() * (2.0 * n * PI * frequency * position).cos()
+                        + f32::sin(2.0 * n * PI * duty)
+                            * f32::cos(2.0 * n * PI * frequency * position)
                             / n
                 })
                 .sum::<f32>()
@@ -90,7 +91,7 @@ pub fn pulse125(frequency: f32, position: f32) -> f32 {
 }
 
 pub fn triangle(f: f32, t: f32) -> f32 {
-    2.0 / PI * (2.0 * PI * f * t).sin().asin()
+    2.0 / PI * f32::asin(f32::sin(2.0 * PI * f * t))
 }
 
 /*
@@ -105,7 +106,7 @@ pub fn saw(frequency: f32, position: f32) -> f32 {
             * (1..)
                 .map(|x| x as f32)
                 .take_while(|x| x * frequency < 20000.0)
-                .map(|n| (2.0 * PI * n * position * frequency).sin() / n)
+                .map(|n| f32::sin(2.0 * PI * n * position * frequency) / n)
                 .sum::<f32>()
     })
 }
