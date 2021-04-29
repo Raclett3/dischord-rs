@@ -288,7 +288,7 @@ async fn main() {
                 None,
             );
             let song = handler.play_source(source.into());
-            let _ = song.set_volume(1.0);
+            let _ = song.set_volume(0.3);
             let _ = song.play();
             loop {
                 let info = song.get_info().await;
