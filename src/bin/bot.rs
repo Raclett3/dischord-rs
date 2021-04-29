@@ -8,10 +8,59 @@ use serenity::{
         macros::{command, group, hook},
         Args, CommandResult, StandardFramework,
     },
-    model::{channel::Message, gateway::Ready},
+    model::{
+        channel::Message,
+        gateway::Ready,
+        id::{ChannelId, GuildId},
+    },
     prelude::*,
 };
+use songbird::{
+    input::{Codec, Container, Input, Reader},
+    SerenityInit, Songbird,
+};
+use std::collections::VecDeque;
 use std::env;
+use std::sync::{Arc, Mutex};
+
+type MMLQueueItem = (Arc<Songbird>, (GuildId, ChannelId), I16Reader);
+
+struct MMLQueue;
+
+impl TypeMapKey for MMLQueue {
+    type Value = Arc<Mutex<VecDeque<MMLQueueItem>>>;
+}
+
+union I16U8Convert {
+    as_u8: [u8; 2],
+    as_i16: i16,
+}
+
+struct I16Reader {
+    iter: Box<dyn Iterator<Item = i16> + Send + Sync>,
+}
+
+impl I16Reader {
+    fn new(iter: Box<dyn Iterator<Item = i16> + Send + Sync>) -> Self {
+        I16Reader { iter }
+    }
+}
+
+impl std::io::Read for I16Reader {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        for (i, chunk) in buf.chunks_mut(2).enumerate() {
+            let item = if let Some(item) = self.iter.next() {
+                item
+            } else {
+                return Ok(i * 2);
+            };
+            let as_u8 = unsafe { I16U8Convert { as_i16: item }.as_u8 };
+            chunk[0] = as_u8[0];
+            chunk[1] = as_u8[1];
+        }
+        Ok(buf.len() / 2 * 2)
+    }
+}
 
 static TOKEN_NAME: &str = "DISCHORD_TOKEN";
 static MANUAL: &str = "```
@@ -56,6 +105,14 @@ fn to_i16_samples(mml: &str) -> Result<Vec<i16>, String> {
     let tokens = tokenize(&mml)?;
     let parsed = parse(&tokens).map_err(|x| x.to_string())?;
     Ok(Generator::new(44100.0, &parsed).into_i16_stream().collect())
+}
+
+fn to_i16_stream(mml: &str) -> Result<I16Reader, String> {
+    let tokens = tokenize(&mml)?;
+    let parsed = parse(&tokens).map_err(|x| x.to_string())?;
+    Ok(I16Reader::new(Box::new(
+        Generator::new(48000.0, &parsed).into_i16_stream(),
+    )))
 }
 
 fn to_mp3(samples: &[i16]) -> Option<Vec<u8>> {
@@ -117,6 +174,53 @@ async fn play(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     Ok(())
 }
 
+#[command]
+async fn vcplay(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let guild = msg.guild(&ctx.cache).await.unwrap();
+    let guild_id = guild.id;
+
+    let channel_id = guild
+        .voice_states
+        .get(&msg.author.id)
+        .and_then(|voice_state| voice_state.channel_id);
+
+    let channel_id = if let Some(channel) = channel_id {
+        channel
+    } else {
+        msg.channel_id
+            .say(&ctx.http, "ボイスチャンネルに参加してからご使用ください。")
+            .await?;
+
+        return Ok(());
+    };
+
+    let mml = args.rest();
+    let stream = match to_i16_stream(mml) {
+        Ok(stream) => stream,
+        Err(err) => {
+            msg.channel_id.say(&ctx.http, err).await?;
+            return Ok(());
+        }
+    };
+
+    let manager = songbird::get(ctx).await.unwrap().clone();
+    {
+        let data = ctx.data.write().await;
+
+        data.get::<MMLQueue>().unwrap().lock().unwrap().push_back((
+            manager,
+            (guild_id, channel_id),
+            stream,
+        ));
+    }
+
+    msg.channel_id
+        .say(&ctx.http, "キューに追加しました。")
+        .await?;
+
+    Ok(())
+}
+
 #[hook]
 async fn unknown_command(_: &Context, _: &Message, unknown_command_name: &str) {
     println!("Unknown commmand: {}", unknown_command_name);
@@ -132,7 +236,7 @@ impl EventHandler for Handler {
 }
 
 #[group]
-#[commands(help, play, playraw)]
+#[commands(help, play, playraw, vcplay)]
 struct Commands;
 
 #[tokio::main]
@@ -148,8 +252,59 @@ async fn main() {
     let mut client = Client::builder(&token)
         .event_handler(Handler)
         .framework(framework)
+        .register_songbird()
         .await
         .expect("Failed to init the client");
+
+    let mml_queue = Arc::new(Mutex::new(VecDeque::new()));
+
+    {
+        let mut data = client.data.write().await;
+
+        data.insert::<MMLQueue>(mml_queue.clone());
+    }
+
+    tokio::spawn(async move {
+        loop {
+            let (manager, (guild_id, channel_id), stream) =
+                if let Some(popped) = mml_queue.lock().unwrap().pop_front() {
+                    popped
+                } else {
+                    continue;
+                };
+            let (handler_lock, result) = manager.join(guild_id, channel_id).await;
+
+            if result.is_err() {
+                continue;
+            }
+
+            let mut handler = handler_lock.lock().await;
+
+            let source = Input::new(
+                false,
+                Reader::Extension(Box::new(stream)),
+                Codec::Pcm,
+                Container::Raw,
+                None,
+            );
+            let song = handler.play_source(source.into());
+            let _ = song.set_volume(1.0);
+            let _ = song.play();
+            loop {
+                let info = song.get_info().await;
+                if let Ok(state) = info {
+                    if state.playing == songbird::tracks::PlayMode::End {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await
+            }
+
+            let _ = handler.leave().await;
+        }
+    });
 
     if let Err(reason) = client.start().await {
         println!("Client error: {:?}", reason);

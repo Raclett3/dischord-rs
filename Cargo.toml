@@ -11,5 +11,6 @@ members = ["composer", "lame"]
 composer = {"path" = "./composer"}
 cpal = "0.13"
 lame = {"path" = "./lame"}
-serenity = {version = "0.9.1", default-features = false, features = ["cache", "client", "framework", "gateway", "rustls_backend", "standard_framework", "model", "voice"]}
-tokio = {version = "0.2", features = ["macros"]}
+serenity = {version = "0.10", default-features = false, features = ["cache", "client", "framework", "gateway", "rustls_backend", "standard_framework", "model", "voice"]}
+songbird = "0.1.6"
+tokio = {version = "1.5", features = ["macros", "rt", "rt-multi-thread", "time"]}
